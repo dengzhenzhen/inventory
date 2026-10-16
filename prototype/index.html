@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>服装进销存管理系统 · 原型</title>
+<link rel="stylesheet" href="https://unpkg.com/element-plus@2/dist/index.css" />
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://unpkg.com/element-plus@2/dist/index.full.min.js"></script>
+<script src="https://unpkg.com/@element-plus/icons-vue@2/dist/index.iife.min.js"></script>
+<style>
+  :root { --brand: #5b6ef5; --brand-dark: #3f4fd6; }
+  * { box-sizing: border-box; }
+  html, body, #app { height: 100%; margin: 0; }
+  body { font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif; background: #f4f6fb; color: #2c3350; }
+  .hidden { display: none !important; }
+
+  /* ---------- Login ---------- */
+  .login-wrap { height: 100%; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #5b6ef5 0%, #8a7bf5 60%, #b06ab3 100%); }
+  .login-card { width: 380px; background: #fff; border-radius: 16px; padding: 40px 36px 30px; box-shadow: 0 20px 60px rgba(20,25,60,.35); }
+  .login-logo { width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 16px; display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(135deg,#5b6ef5,#8a7bf5); color:#fff; font-size: 26px; font-weight: 700; }
+  .login-title { text-align: center; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .login-sub { text-align: center; color: #98a0b3; font-size: 13px; margin-bottom: 26px; }
+  .login-btn { width: 100%; }
+  .login-tip { text-align: center; color: #b3bacb; font-size: 12px; margin-top: 16px; }
+
+  /* ---------- Shell ---------- */
+  .app { height: 100%; }
+  .aside { background: #1f2544; color: #cdd3e8; overflow: hidden; }
+  .logo { height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 20px; color: #fff; font-weight: 700; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .logo .dot { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg,#5b6ef5,#b06ab3); display:inline-block; }
+  .aside .el-menu { border-right: none; background: transparent; }
+  .aside .el-menu-item, .aside .el-sub-menu__title { color: #aab1cc; height: 46px; }
+  .aside .el-menu-item:hover, .aside .el-sub-menu__title:hover { background: rgba(255,255,255,.06); color: #fff; }
+  .aside .el-menu-item.is-active { color: #fff; background: linear-gradient(90deg, var(--brand), rgba(91,110,245,.35)); border-left: 3px solid #fff; }
+  .header { background: #fff; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 0 #edf0f7; height: 60px; }
+  .crumb { font-size: 17px; font-weight: 600; }
+  .user { display: flex; align-items: center; gap: 12px; color: #5a6178; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--brand); color: #fff; display:flex; align-items:center; justify-content:center; font-size: 13px; }
+  .main { padding: 18px; overflow: auto; }
+
+  /* ---------- Cards ---------- */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+  .stat-card { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 10px rgba(30,40,90,.05); }
+  .stat-card .label { color: #8a91a8; font-size: 13px; }
+  .stat-card .value { font-size: 26px; font-weight: 700; margin-top: 8px; color: #232a45; }
+  .stat-card .value small { font-size: 13px; font-weight: 500; color:#98a0b3; margin-left: 4px; }
+  .stat-card .ico { float: right; width: 42px; height: 42px; border-radius: 10px; display:flex; align-items:center; justify-content:center; font-size: 20px; color:#fff; }
+  .card { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 10px rgba(30,40,90,.05); margin-bottom: 16px; }
+  .card-title { font-weight: 600; margin-bottom: 14px; display:flex; align-items:center; justify-content: space-between; }
+  .thumbs { display:flex; flex-wrap: wrap; gap: 10px; }
+  .thumb { width: 120px; }
+  .thumb .ph { width: 120px; height: 120px; border-radius: 10px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size: 15px; letter-spacing:1px; }
+
+  /* image placeholder */
+  .img-box { border-radius: 8px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; }
+
+  /* chart bars */
+  .bars { display:flex; align-items:flex-end; gap: 18px; height: 200px; padding: 10px 4px 0; }
+  .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+  .bar { width: 60%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg,#7d8bff,#5b6ef5); transition: height .3s; }
+  .bar-label { font-size: 12px; color:#8a91a8; margin-top: 8px; }
+  .bar-val { font-size: 12px; color:#5a6178; margin-bottom: 4px; }
+  .rank-row { display:flex; align-items:center; gap: 12px; margin-bottom: 12px; }
+  .rank-row .name { width: 150px; font-size: 13px; }
+  .rank-row .el-progress { flex: 1; }
+
+  .upload-box { width: 120px; height: 120px; border: 1px dashed #c8cede; border-radius: 10px; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#98a0b3; cursor:pointer; background:#fafbff; }
+  .upload-box:hover { border-color: var(--brand); color: var(--brand); }
+  .upload-box .plus { font-size: 26px; }
+  .filter-bar { display:flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .filter-bar .el-input, .filter-bar .el-select { width: 170px; }
+  .muted { color:#98a0b3; font-size: 12px; }
+  .neg { color: #f56c6c; font-weight: 700; }
+  .warn-banner { background:#fff7e6; border:1px solid #ffe0a3; color:#b7791f; padding:10px 14px; border-radius:8px; font-size:13px; margin-top:6px; }
+  .el-main::-webkit-scrollbar { width: 8px; } .el-main::-webkit-scrollbar-thumb { background:#d5d9e6; border-radius: 4px; }
+
+  @media (max-width: 860px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .aside { position: fixed; z-index: 30; height: 100%; }
+    .aside.collapsed { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ LOGIN ============ -->
+  <div v-if="!loggedIn" class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">服</div>
+      <div class="login-title">服装进销存管理系统</div>
+      <div class="login-sub">进货 · 销售 · 库存 一站式管理</div>
+      <el-form @submit.prevent>
+        <el-form-item>
+          <el-input v-model="loginForm.username" size="large" placeholder="账号">
+            <template #prefix><el-icon><User/></el-icon></template>
+          </el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-input v-model="loginForm.password" size="large" type="password" show-password placeholder="密码">
+            <template #prefix><el-icon><Lock/></el-icon></template>
+          </el-input>
+        </el-form-item>
+        <el-button type="primary" size="large" class="login-btn" @click="doLogin">登 录</el-button>
+      </el-form>
+      <div class="login-tip">演示账号：admin / 123456（任意账号密码均可进入）</div>
+    </div>
+  </div>
+
+  <!-- ============ APP ============ -->
+  <el-container v-else class="app">
+    <el-aside width="212px" class="aside" :class="{collapsed: mobileHidden}">
+      <div class="logo"><span class="dot"></span> 服装进销存</div>
+      <el-menu :default-active="page" @select="go">
+        <el-menu-item index="dashboard"><el-icon><DataBoard/></el-icon><span>工作台</span></el-menu-item>
+        <el-sub-menu index="g-purchase">
+          <template #title><el-icon><SoldOut/></el-icon><span>进货管理</span></template>
+          <el-menu-item index="purchase-entry">进货录入</el-menu-item>
+          <el-menu-item index="purchase-list">进货记录</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="g-sale">
+          <template #title><el-icon><ShoppingCart/></el-icon><span>销售管理</span></template>
+          <el-menu-item index="sale-create">销售开单</el-menu-item>
+          <el-menu-item index="sale-list">销售记录</el-menu-item>
+        </el-sub-menu>
+        <el-menu-item index="stock"><el-icon><Box/></el-icon><span>库存查询</span></el-menu-item>
+        <el-menu-item index="products"><el-icon><Goods/></el-icon><span>商品档案</span></el-menu-item>
+        <el-menu-item index="reports"><el-icon><TrendCharts/></el-icon><span>统计报表</span></el-menu-item>
+        <el-menu-item index="settings"><el-icon><Setting/></el-icon><span>系统设置</span></el-menu-item>
+      </el-menu>
+    </el-aside>
+
+    <el-container>
+      <el-header class="header">
+        <div class="crumb">
+          <el-button v-if="isMobile" link style="margin-right:8px" @click="mobileHidden=!mobileHidden"><el-icon><Fold/></el-icon></el-button>
+          {{ currentTitle }}
+        </div>
+        <div class="user">
+          <div class="avatar">{{ (loginForm.username||'A').slice(0,1).toUpperCase() }}</div>
+          <span>{{ loginForm.username || 'admin' }}</span>
+          <el-button link type="danger" @click="logout">退出</el-button>
+        </div>
+      </el-header>
+
+      <el-main class="main">
+
+        <!-- ===== 工作台 ===== -->
+        <div v-show="page==='dashboard'">
+          <div class="stat-grid">
+            <div class="stat-card">
+              <span class="ico" style="background:linear-gradient(135deg,#5b6ef5,#8a7bf5)">￥</span>
+              <div class="label">本月进货金额</div>
+              <div class="value">￥{{ fmtMoney(stats.purchaseAmount) }}</div>
+            </div>
+            <div class="stat-card">
+              <span class="ico" style="background:linear-gradient(135deg,#34c38f,#6fe0b3)">￥</span>
+              <div class="label">本月销售金额</div>
+              <div class="value">￥{{ fmtMoney(stats.saleAmount) }}</div>
+            </div>
+            <div class="stat-card">
+              <span class="ico" style="background:linear-gradient(135deg,#f5a623,#ffcf6b)">款</span>
+              <div class="label">库存款数</div>
+              <div class="value">{{ stats.styles }}<small>款</small></div>
+            </div>
+            <div class="stat-card">
+              <span class="ico" style="background:linear-gradient(135deg,#f56c6c,#ff9a9a)">件</span>
+              <div class="label">库存件数</div>
+              <div class="value">{{ stats.pieces }}<small>件</small></div>
+            </div>
+          </div>
+
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <div class="card">
+                <div class="card-title">最近进货 <el-button link type="primary" @click="go('purchase-list')">查看全部</el-button></div>
+                <el-table :data="purchases.slice(0,5)" size="small" :show-header="true">
+                  <el-table-column prop="style_code" label="款号" width="110" />
+                  <el-table-column prop="size" label="尺码" width="60" />
+                  <el-table-column prop="quantity" label="数量" width="60" />
+                  <el-table-column prop="cost_price" label="进货价" width="80"><template #default="{row}">￥{{ fmtMoney(row.cost_price) }}</template></el-table-column>
+                  <el-table-column prop="date" label="日期" />
+                </el-table>
+              </div>
+            </el-col>
+            <el-col :span="12">
+              <div class="card">
+                <div class="card-title">最近销售 <el-button link type="primary" @click="go('sale-list')">查看全部</el-button></div>
+                <el-table :data="sales.slice(0,5)" size="small">
+                  <el-table-column prop="style_code" label="款号" width="110" />
+                  <el-table-column prop="size" label="尺码" width="60" />
+                  <el-table-column prop="quantity" label="数量" width="60" />
+                  <el-table-column prop="unit_price" label="售价" width="80"><template #default="{row}">￥{{ fmtMoney(row.unit_price) }}</template></el-table-column>
+                  <el-table-column prop="date" label="日期" />
+                </el-table>
+              </div>
+            </el-col>
+          </el-row>
+
+          <div class="card">
+            <div class="card-title">商品缩略图</div>
+            <div class="thumbs">
+              <div class="thumb" v-for="p in products.slice(0,6)" :key="p.id">
+                <div class="ph" :style="imgStyle(p)">{{ p.style_code.slice(-3) }}</div>
+                <div class="muted" style="margin-top:6px">{{ p.style_code }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 进货录入 ===== -->
+        <div v-show="page==='purchase-entry'">
+          <div class="card">
+            <div class="card-title">
+              进货录入
+              <el-switch v-model="purchaseBatch" active-text="批量录入" />
+            </div>
+
+            <!-- 单条模式 -->
+            <el-form v-if="!purchaseBatch" :model="pf" label-width="80px" style="max-width:720px">
+              <el-row :gutter="16">
+                <el-col :span="12">
+                  <el-form-item label="款号" required>
+                    <el-select v-model="pf.style_code" filterable allow-create default-first-option placeholder="选择或输入新款号" style="width:100%" @change="onPurchaseStyle">
+                      <el-option v-for="p in products" :key="p.id" :label="p.style_code + ' · ' + p.name" :value="p.style_code" />
+                    </el-select>
+                    <div class="muted" v-if="pf.style_code && !products.find(p=>p.style_code===pf.style_code)">该款号不存在，保存时将自动新建档案</div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="分类">
+                    <el-select v-model="pf.category" filterable allow-create placeholder="选择或输入" style="width:100%">
+                      <el-option v-for="c in dicts.category" :key="c" :label="c" :value="c" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="厂家">
+                    <el-select v-model="pf.supplier" filterable allow-create placeholder="选择或输入" style="width:100%">
+                      <el-option v-for="s in dicts.supplier" :key="s" :label="s" :value="s" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="尺码">
+                    <el-select v-model="pf.size" filterable allow-create placeholder="选择或输入" style="width:100%">
+                      <el-option v-for="s in dicts.size" :key="s" :label="s" :value="s" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="数量" required>
+                    <el-input-number v-model="pf.quantity" :min="1" style="width:100%" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="进货价" required>
+                    <el-input-number v-model="pf.cost_price" :min="0" :precision="2" style="width:100%" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="日期" required>
+                    <el-date-picker v-model="pf.date" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="主图">
+                    <div class="upload-box" @click="uploadTip"><div class="plus">+</div><div style="font-size:12px">上传图片</div></div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="备注">
+                    <el-input v-model="pf.remark" type="textarea" :rows="2" placeholder="选填" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-form-item>
+                <el-button type="primary" @click="savePurchase">保存进货</el-button>
+                <el-button @click="resetPurchase">重置</el-button>
+              </el-form-item>
+            </el-form>
+
+            <!-- 批量模式 -->
+            <div v-else>
+              <el-table :data="batchRows" size="small">
+                <el-table-column label="款号" width="150"><template #default="{row}"><el-input v-model="row.style_code" size="small" placeholder="款号" /></template></el-table-column>
+                <el-table-column label="尺码" width="90"><template #default="{row}"><el-select v-model="row.size" size="small"><el-option v-for="s in dicts.size" :key="s" :label="s" :value="s" /></el-select></template></el-table-column>
+                <el-table-column label="数量" width="100"><template #default="{row}"><el-input-number v-model="row.quantity" size="small" :min="1" controls-position="right" style="width:90px" /></template></el-table-column>
+                <el-table-column label="进货价" width="120"><template #default="{row}"><el-input-number v-model="row.cost_price" size="small" :min="0" :precision="2" controls-position="right" style="width:110px" /></template></el-table-column>
+                <el-table-column label="分类" width="120"><template #default="{row}"><el-select v-model="row.category" size="small" filterable allow-create><el-option v-for="c in dicts.category" :key="c" :label="c" :value="c" /></el-select></template></el-table-column>
+                <el-table-column label="厂家" width="150"><template #default="{row}"><el-select v-model="row.supplier" size="small" filterable allow-create><el-option v-for="s in dicts.supplier" :key="s" :label="s" :value="s" /></el-select></template></el-table-column>
+                <el-table-column label="日期" width="140"><template #default="{row}"><el-date-picker v-model="row.date" type="date" size="small" value-format="YYYY-MM-DD" style="width:130px" /></template></el-table-column>
+                <el-table-column label="操作" width="120">
+                  <template #default="{$index}">
+                    <el-button link type="primary" size="small" @click="copyRow($index)">复制上一行</el-button>
+                    <el-button link type="danger" size="small" @click="batchRows.splice($index,1)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div style="margin-top:12px">
+                <el-button @click="addBatchRow">+ 添加一行</el-button>
+                <el-button type="primary" @click="saveBatch" style="margin-left:8px">批量保存（{{ batchRows.length }} 条）</el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 进货记录 ===== -->
+        <div v-show="page==='purchase-list'">
+          <div class="card">
+            <div class="filter-bar">
+              <el-input v-model="fPurchase.style_code" placeholder="款号" clearable />
+              <el-select v-model="fPurchase.category" placeholder="分类" clearable>
+                <el-option v-for="c in dicts.category" :key="c" :label="c" :value="c" />
+              </el-select>
+              <el-select v-model="fPurchase.supplier" placeholder="厂家" clearable>
+                <el-option v-for="s in dicts.supplier" :key="s" :label="s" :value="s" />
+              </el-select>
+              <el-select v-model="fPurchase.size" placeholder="尺码" clearable>
+                <el-option v-for="s in dicts.size" :key="s" :label="s" :value="s" />
+              </el-select>
+              <el-date-picker v-model="fPurchase.range" type="daterange" value-format="YYYY-MM-DD" start-placeholder="开始" end-placeholder="结束" />
+              <el-button type="primary" @click="noop">查询</el-button>
+              <el-button @click="fPurchase={style_code:'',category:'',supplier:'',size:'',range:null}">重置</el-button>
+              <el-button type="success" plain @click="exportTip">导出 Excel</el-button>
+            </div>
+            <el-table :data="filteredPurchases" border stripe>
+              <el-table-column prop="style_code" label="款号" width="120" />
+              <el-table-column prop="category" label="分类" width="90" />
+              <el-table-column prop="supplier" label="厂家" width="160" />
+              <el-table-column prop="size" label="尺码" width="70" />
+              <el-table-column prop="quantity" label="数量" width="70" />
+              <el-table-column label="进货价" width="90"><template #default="{row}">￥{{ fmtMoney(row.cost_price) }}</template></el-table-column>
+              <el-table-column label="金额" width="100"><template #default="{row}">￥{{ fmtMoney(row.quantity*row.cost_price) }}</template></el-table-column>
+              <el-table-column prop="date" label="日期" width="120" />
+              <el-table-column prop="remark" label="备注" show-overflow-tooltip />
+              <el-table-column label="操作" width="120" fixed="right">
+                <template #default="{$index}">
+                  <el-button link type="primary" size="small" @click="noop">编辑</el-button>
+                  <el-button link type="danger" size="small" @click="delPurchase($index)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-pagination style="margin-top:14px; justify-content:flex-end" layout="total, prev, pager, next" :total="filteredPurchases.length" :page-size="10" />
+          </div>
+        </div>
+
+        <!-- ===== 销售开单 ===== -->
+        <div v-show="page==='sale-create'">
+          <div class="card" style="max-width:760px">
+            <div class="card-title">销售开单</div>
+            <el-form :model="sf" label-width="80px">
+              <el-row :gutter="16">
+                <el-col :span="12">
+                  <el-form-item label="款号" required>
+                    <el-select v-model="sf.style_code" filterable placeholder="搜索款号" style="width:100%" @change="onSaleStyle">
+                      <el-option v-for="p in products" :key="p.id" :label="p.style_code + ' · ' + p.name" :value="p.style_code" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="分类">
+                    <el-input v-model="sf.category" disabled />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="尺码" required>
+                    <el-select v-model="sf.size" placeholder="选择尺码" style="width:100%" @change="noop">
+                      <el-option v-for="s in dicts.size" :key="s" :label="s" :value="s" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="当前库存">
+                    <el-tag :type="saleCurrentStock<0?'danger':(saleCurrentStock<saleSevere?'warning':'success')" size="large">{{ saleCurrentStock }} 件</el-tag>
+                    <span class="muted" style="margin-left:8px">零售价 ￥{{ fmtMoney(sf.retail_price) }}</span>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="数量" required>
+                    <el-input-number v-model="sf.quantity" :min="1" style="width:100%" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="售价" required>
+                    <el-input-number v-model="sf.unit_price" :min="0" :precision="2" style="width:100%" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="日期" required>
+                    <el-date-picker v-model="sf.date" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="备注">
+                    <el-input v-model="sf.remark" type="textarea" :rows="2" placeholder="选填" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <div v-if="saleOversell" class="warn-banner">
+                ⚠️ 库存不足：当前「{{ sf.style_code }} / {{ sf.size }}」库存 {{ saleCurrentStock }} 件，本次销售 {{ sf.quantity }} 件，将产生 <b>负库存 {{ saleCurrentStock - sf.quantity }}</b>。
+                <span class="muted">（按需求：允许负库存但强提示，仍可继续保存）</span>
+              </div>
+
+              <el-form-item style="margin-top:16px">
+                <el-button type="primary" @click="saveSale">确认出库</el-button>
+                <el-button @click="resetSale">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+        </div>
+
+        <!-- ===== 销售记录 ===== -->
+        <div v-show="page==='sale-list'">
+          <div class="card">
+            <div class="filter-bar">
+              <el-input v-model="fSale.style_code" placeholder="款号" clearable />
+              <el-select v-model="fSale.category" placeholder="分类" clearable>
+                <el-option v-for="c in dicts.category" :key="c" :label="c" :value="c" />
+              </el-select>
+              <el-select v-model="fSale.size" placeholder="尺码" clearable>
+                <el-option v-for="s in dicts.size" :key="s" :label="s" :value="s" />
+              </el-select>
+              <el-date-picker v-model="fSale.range" type="daterange" value-format="YYYY-MM-DD" start-placeholder="开始" end-placeholder="结束" />
+              <el-button type="primary" @click="noop">查询</el-button>
+              <el-button @click="fSale={style_code:'',category:'',size:'',range:null}">重置</el-button>
+              <el-button type="success" plain @click="exportTip">导出 Excel</el-button>
+            </div>
+            <el-table :data="filteredSales" border stripe>
+              <el-table-column prop="style_code" label="款号" width="120" />
+              <el-table-column prop="category" label="分类" width="90" />
+              <el-table-column prop="size" label="尺码" width="70" />
+              <el-table-column prop="quantity" label="数量" width="70" />
+              <el-table-column label="售价" width="90"><template #default="{row}">￥{{ fmtMoney(row.unit_price) }}</template></el-table-column>
+              <el-table-column label="金额" width="100"><template #default="{row}">￥{{ fmtMoney(row.quantity*row.unit_price) }}</template></el-table-column>
+              <el-table-column prop="date" label="日期" width="120" />
+              <el-table-column prop="remark" label="备注" show-overflow-tooltip />
+              <el-table-column label="操作" width="120" fixed="right">
+                <template #default="{$index}">
+                  <el-button link type="primary" size="small" @click="noop">编辑</el-button>
+                  <el-button link type="danger" size="small" @click="delSale($index)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-pagination style="margin-top:14px; justify-content:flex-end" layout="total, prev, pager, next" :total="filteredSales.length" :page-size="10" />
+          </div>
+        </div>
+
+        <!-- ===== 库存查询 ===== -->
+        <div v-show="page==='stock'">
+          <div class="card">
+            <div class="filter-bar">
+              <el-input v-model="fStock.keyword" placeholder="款号 / 品名" clearable style="width:220px" />
+              <el-select v-model="fStock.category" placeholder="分类" clearable>
+                <el-option v-for="c in dicts.category" :key="c" :label="c" :value="c" />
+              </el-select>
+              <el-checkbox v-model="fStock.onlyNegative">仅看负库存</el-checkbox>
+            </div>
+            <el-table :data="filteredStock" border stripe>
+              <el-table-column label="主图" width="80">
+                <template #default="{row}"><div class="img-box" :style="[imgStyle(row.product),{width:'44px',height:'44px',fontSize:'11px'}]">{{ row.product.style_code.slice(-3) }}</div></template>
+              </el-table-column>
+              <el-table-column label="款号" width="120"><template #default="{row}">{{ row.product.style_code }}</template></el-table-column>
+              <el-table-column label="品名"><template #default="{row}">{{ row.product.name }}</template></el-table-column>
+              <el-table-column label="分类" width="90"><template #default="{row}">{{ row.product.category }}</template></el-table-column>
+              <el-table-column prop="size" label="尺码" width="70" />
+              <el-table-column prop="purchased" label="进货数量" width="90" />
+              <el-table-column prop="sold" label="销售数量" width="90" />
+              <el-table-column label="结存" width="100">
+                <template #default="{row}">
+                  <span :class="{neg: row.stock<0}">{{ row.stock }}</span>
+                  <el-tag v-if="row.stock<0" type="danger" size="small" style="margin-left:6px">负库存</el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="muted" style="margin-top:10px">净库存 = 进货数量 − 销售数量</div>
+          </div>
+        </div>
+
+        <!-- ===== 商品档案 ===== -->
+        <div v-show="page==='products'">
+          <div class="card">
+            <div class="card-title">
+              商品档案
+              <el-button type="primary" @click="openProduct()">+ 新建款式</el-button>
+            </div>
+            <el-table :data="products" border stripe>
+              <el-table-column label="主图" width="80">
+                <template #default="{row}"><div class="img-box" :style="[imgStyle(row),{width:'44px',height:'44px',fontSize:'11px'}]">{{ row.style_code.slice(-3) }}</div></template>
+              </el-table-column>
+              <el-table-column prop="style_code" label="款号" width="130" />
+              <el-table-column prop="name" label="品名" />
+              <el-table-column prop="category" label="分类" width="100" />
+              <el-table-column prop="supplier" label="厂家" width="170" />
+              <el-table-column label="零售价" width="100"><template #default="{row}">￥{{ fmtMoney(row.retail_price) }}</template></el-table-column>
+              <el-table-column label="操作" width="120" fixed="right">
+                <template #default="{row}">
+                  <el-button link type="primary" size="small" @click="openProduct(row)">编辑</el-button>
+                  <el-button link type="danger" size="small" @click="noop">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <el-dialog v-model="productDialog" :title="pfEdit.id?'编辑款式':'新建款式'" width="560px">
+            <el-form :model="pfEdit" label-width="80px">
+              <el-form-item label="款号" required><el-input v-model="pfEdit.style_code" placeholder="唯一款号" /></el-form-item>
+              <el-form-item label="品名"><el-input v-model="pfEdit.name" /></el-form-item>
+              <el-form-item label="分类"><el-select v-model="pfEdit.category" filterable allow-create style="width:100%"><el-option v-for="c in dicts.category" :key="c" :label="c" :value="c" /></el-select></el-form-item>
+              <el-form-item label="厂家"><el-select v-model="pfEdit.supplier" filterable allow-create style="width:100%"><el-option v-for="s in dicts.supplier" :key="s" :label="s" :value="s" /></el-select></el-form-item>
+              <el-form-item label="零售价"><el-input-number v-model="pfEdit.retail_price" :min="0" :precision="2" style="width:100%" /></el-form-item>
+              <el-form-item label="主图"><div class="upload-box" @click="uploadTip"><div class="plus">+</div><div style="font-size:12px">上传图片</div></div></el-form-item>
+              <el-form-item label="备注"><el-input v-model="pfEdit.remark" type="textarea" :rows="2" /></el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="productDialog=false">取消</el-button>
+              <el-button type="primary" @click="saveProduct">保存</el-button>
+            </template>
+          </el-dialog>
+        </div>
+
+        <!-- ===== 统计报表 ===== -->
+        <div v-show="page==='reports'">
+          <div class="card">
+            <div class="filter-bar">
+              <el-date-picker v-model="reportRange" type="daterange" value-format="YYYY-MM-DD" start-placeholder="开始" end-placeholder="结束" />
+              <el-button type="primary" @click="noop">生成报表</el-button>
+              <span class="muted" style="margin-left:auto">* 因未启用批次，毛利按加权平均成本估算</span>
+            </div>
+            <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+              <div class="stat-card"><div class="label">进货金额</div><div class="value">￥{{ fmtMoney(stats.purchaseAmount) }}</div></div>
+              <div class="stat-card"><div class="label">销售金额</div><div class="value">￥{{ fmtMoney(stats.saleAmount) }}</div></div>
+              <div class="stat-card"><div class="label">毛利（估算）</div><div class="value" style="color:#34c38f">￥{{ fmtMoney(stats.profit) }}</div></div>
+            </div>
+          </div>
+          <el-row :gutter="16">
+            <el-col :span="14">
+              <div class="card">
+                <div class="card-title">每日销售金额（近期）</div>
+                <div class="bars">
+                  <div class="bar-col" v-for="d in dailySales" :key="d.date">
+                    <div class="bar-val">￥{{ fmtMoney(d.amount) }}</div>
+                    <div class="bar" :style="{height: barHeight(d.amount)+'px'}"></div>
+                    <div class="bar-label">{{ d.date.slice(5) }}</div>
+                  </div>
+                </div>
+              </div>
+            </el-col>
+            <el-col :span="10">
+              <div class="card">
+                <div class="card-title">分类进货占比</div>
+                <div class="rank-row" v-for="c in categoryRank" :key="c.name">
+                  <div class="name">{{ c.name }}</div>
+                  <el-progress :percentage="c.pct" :stroke-width="14" :show-text="false" />
+                  <div class="muted" style="width:60px;text-align:right">￥{{ fmtMoney(c.amount) }}</div>
+                </div>
+              </div>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- ===== 系统设置 ===== -->
+        <div v-show="page==='settings'">
+          <div class="card">
+            <el-tabs v-model="settingTab">
+              <el-tab-pane label="字典管理" name="dict">
+                <el-row :gutter="20">
+                  <el-col :span="8" v-for="grp in ['category','supplier','size']" :key="grp">
+                    <div style="font-weight:600;margin-bottom:10px">{{ {category:'分类',supplier:'厂家',size:'尺码'}[grp] }}</div>
+                    <el-tag v-for="(item,i) in dicts[grp]" :key="item" closable style="margin:0 8px 8px 0" @close="delDict(grp,i)">{{ item }}</el-tag>
+                    <el-input v-model="newDict[grp]" size="small" :placeholder="'新增' + {category:'分类',supplier:'厂家',size:'尺码'}[grp]" @keyup.enter="addDict(grp)" style="width:160px">
+                      <template #append><el-button @click="addDict(grp)">添加</el-button></template>
+                    </el-input>
+                  </el-col>
+                </el-row>
+              </el-tab-pane>
+              <el-tab-pane label="账号设置" name="account">
+                <el-form label-width="100px" style="max-width:420px">
+                  <el-form-item label="账号"><el-input v-model="loginForm.username" /></el-form-item>
+                  <el-form-item label="新密码"><el-input type="password" show-password placeholder="不修改请留空" /></el-form-item>
+                  <el-form-item><el-button type="primary" @click="saved('账号信息已保存（演示）')">保存</el-button></el-form-item>
+                </el-form>
+              </el-tab-pane>
+              <el-tab-pane label="数据备份 / 导入导出" name="backup">
+                <el-space wrap>
+                  <el-button type="primary" @click="saved('已触发数据库备份（演示）')">立即备份数据库</el-button>
+                  <el-button @click="saved('已触发图片目录备份（演示）')">备份图片</el-button>
+                  <el-button @click="exportTip">导出进货明细</el-button>
+                  <el-button @click="exportTip">导出销售明细</el-button>
+                  <el-button @click="exportTip">导出库存</el-button>
+                  <el-button type="success" plain @click="saved('请下载模板后填写再导入（演示）')">导入历史 Excel</el-button>
+                </el-space>
+                <div class="muted" style="margin-top:12px">系统每日自动备份数据库与图片目录；数据量较大时建议定期手动备份到外部存储。</div>
+              </el-tab-pane>
+            </el-tabs>
+          </div>
+        </div>
+
+      </el-main>
+    </el-container>
+  </el-container>
+</div>
+
+<script>
+const { createApp } = Vue;
+const COST = { HT:'#5b6ef5', KD:'#34c38f' };
+
+const app = createApp({
+  data() {
+    return {
+      loggedIn: false,
+      loginForm: { username: 'admin', password: '' },
+      page: 'dashboard',
+      mobileHidden: false,
+      isMobile: window.innerWidth < 860,
+
+      dicts: {
+        category: ['上衣', '裤装', '裙装', '外套', '配饰'],
+        supplier: ['杭州优品服饰', '广州锦程制衣', '义乌恒达针织'],
+        size: ['S', 'M', 'L', 'XL', '均码'],
+      },
+      newDict: { category: '', supplier: '', size: '' },
+
+      products: [
+        { id:1, style_code:'HT2024-001', name:'基础圆领T恤', category:'上衣', supplier:'杭州优品服饰', retail_price:129, remark:'' },
+        { id:2, style_code:'HT2024-002', name:'休闲直筒牛仔裤', category:'裤装', supplier:'广州锦程制衣', retail_price:259, remark:'' },
+        { id:3, style_code:'HT2024-003', name:'碎花雪纺连衣裙', category:'裙装', supplier:'杭州优品服饰', retail_price:329, remark:'' },
+        { id:4, style_code:'HT2024-004', name:'宽松针织开衫', category:'外套', supplier:'义乌恒达针织', retail_price:299, remark:'' },
+        { id:5, style_code:'KD-8821', name:'高腰阔腿裤', category:'裤装', supplier:'广州锦程制衣', retail_price:239, remark:'' },
+        { id:6, style_code:'KD-8822', name:'复古格纹衬衫', category:'上衣', supplier:'义乌恒达针织', retail_price:189, remark:'' },
+        { id:7, style_code:'KD-8823', name:'百褶半身裙', category:'裙装', supplier:'杭州优品服饰', retail_price:219, remark:'' },
+      ],
+      purchases: [
+        { style_code:'HT2024-001', category:'上衣', supplier:'杭州优品服饰', size:'S',  quantity:10, cost_price:45, date:'2026-10-02', remark:'秋季首单' },
+        { style_code:'HT2024-001', category:'上衣', supplier:'杭州优品服饰', size:'M',  quantity:15, cost_price:45, date:'2026-10-02', remark:'' },
+        { style_code:'HT2024-002', category:'裤装', supplier:'广州锦程制衣', size:'30', quantity:8,  cost_price:88, date:'2026-10-05', remark:'' },
+        { style_code:'HT2024-003', category:'裙装', supplier:'杭州优品服饰', size:'M',  quantity:12, cost_price:110, date:'2026-10-08', remark:'爆款补货' },
+        { style_code:'HT2024-004', category:'外套', supplier:'义乌恒达针织', size:'均码', quantity:6, cost_price:120, date:'2026-10-10', remark:'' },
+        { style_code:'KD-8821',   category:'裤装', supplier:'广州锦程制衣', size:'L',  quantity:9,  cost_price:95, date:'2026-10-12', remark:'' },
+        { style_code:'KD-8822',   category:'上衣', supplier:'义乌恒达针织', size:'M',  quantity:14, cost_price:70, date:'2026-10-13', remark:'' },
+        { style_code:'KD-8823',   category:'裙装', supplier:'杭州优品服饰', size:'S',  quantity:7,  cost_price:82, date:'2026-10-15', remark:'' },
+      ],
+      sales: [
+        { style_code:'HT2024-001', category:'上衣', size:'M', quantity:3, unit_price:129, date:'2026-10-06', remark:'老顾客' },
+        { style_code:'HT2024-002', category:'裤装', size:'30', quantity:2, unit_price:259, date:'2026-10-09', remark:'' },
+        { style_code:'HT2024-003', category:'裙装', size:'M', quantity:4, unit_price:329, date:'2026-10-11', remark:'双十一预热' },
+        { style_code:'KD-8821',   category:'裤装', size:'L', quantity:1, unit_price:239, date:'2026-10-13', remark:'' },
+        { style_code:'KD-8822',   category:'上衣', size:'M', quantity:5, unit_price:189, date:'2026-10-14', remark:'' },
+        { style_code:'HT2024-004', category:'外套', size:'均码', quantity:2, unit_price:299, date:'2026-10-16', remark:'' },
+      ],
+
+      // 进货表单
+      purchaseBatch: false,
+      pf: this.emptyPurchase(),
+      batchRows: [this.emptyPurchase()],
+
+      // 销售开单
+      sf: this.emptySale(),
+      saleSevere: 3,
+
+      // 商品编辑
+      productDialog: false,
+      pfEdit: {},
+
+      // 筛选
+      fPurchase: { style_code:'', category:'', supplier:'', size:'', range:null },
+      fSale: { style_code:'', category:'', size:'', range:null },
+      fStock: { keyword:'', category:'', onlyNegative:false },
+
+      settingTab: 'dict',
+      reportRange: ['2026-10-01','2026-10-31'],
+    };
+  },
+  computed: {
+    currentTitle() {
+      const map = { dashboard:'工作台', 'purchase-entry':'进货录入', 'purchase-list':'进货记录',
+        'sale-create':'销售开单', 'sale-list':'销售记录', stock:'库存查询', products:'商品档案',
+        reports:'统计报表', settings:'系统设置' };
+      return map[this.page] || '工作台';
+    },
+    filteredPurchases() {
+      const f = this.fPurchase;
+      return this.purchases.filter(r =>
+        (!f.style_code || r.style_code.includes(f.style_code)) &&
+        (!f.category || r.category === f.category) &&
+        (!f.supplier || r.supplier === f.supplier) &&
+        (!f.size || r.size === f.size) &&
+        (!f.range || (r.date >= f.range[0] && r.date <= f.range[1]))
+      );
+    },
+    filteredSales() {
+      const f = this.fSale;
+      return this.sales.filter(r =>
+        (!f.style_code || r.style_code.includes(f.style_code)) &&
+        (!f.category || r.category === f.category) &&
+        (!f.size || r.size === f.size) &&
+        (!f.range || (r.date >= f.range[0] && r.date <= f.range[1]))
+      );
+    },
+    stockList() {
+      const map = {};
+      const key = (sc, sz) => sc + '|' + sz;
+      this.purchases.forEach(r => {
+        const k = key(r.style_code, r.size);
+        map[k] = map[k] || { style_code:r.style_code, size:r.size, purchased:0, sold:0 };
+        map[k].purchased += r.quantity;
+      });
+      this.sales.forEach(r => {
+        const k = key(r.style_code, r.size);
+        map[k] = map[k] || { style_code:r.style_code, size:r.size, purchased:0, sold:0 };
+        map[k].sold += r.quantity;
+      });
+      return Object.values(map).map(r => {
+        const product = this.products.find(p => p.style_code === r.style_code) ||
+          { style_code:r.style_code, name:'(未建档)', category:'' };
+        return { ...r, product, stock: r.purchased - r.sold };
+      });
+    },
+    filteredStock() {
+      const f = this.fStock;
+      return this.stockList.filter(r =>
+        (!f.keyword || r.product.style_code.includes(f.keyword) || (r.product.name||'').includes(f.keyword)) &&
+        (!f.category || r.product.category === f.category) &&
+        (!f.onlyNegative || r.stock < 0)
+      );
+    },
+    stats() {
+      const purchaseAmount = this.purchases.reduce((s,r)=>s+r.quantity*r.cost_price,0);
+      const saleAmount = this.sales.reduce((s,r)=>s+r.quantity*r.unit_price,0);
+      const styles = new Set(this.products.map(p=>p.style_code)).size;
+      const pieces = this.stockList.reduce((s,r)=>s+r.stock,0);
+      // 毛利估算：销售金额 - 按款号平均进货成本 * 销量
+      let estCost = 0;
+      this.sales.forEach(s => {
+        const ps = this.purchases.filter(p => p.style_code===s.style_code);
+        const totalQ = ps.reduce((a,b)=>a+b.quantity,0);
+        const totalC = ps.reduce((a,b)=>a+b.quantity*b.cost_price,0);
+        const avg = totalQ ? totalC/totalQ : 0;
+        estCost += avg * s.quantity;
+      });
+      return { purchaseAmount, saleAmount, styles, pieces, profit: saleAmount - estCost, estCost };
+    },
+    dailySales() {
+      const map = {};
+      this.sales.forEach(s => { map[s.date] = (map[s.date]||0) + s.quantity*s.unit_price; });
+      const arr = Object.keys(map).sort().map(d => ({ date:d, amount:map[d] }));
+      return arr.length ? arr : [{date:'2026-10-01',amount:0}];
+    },
+    categoryRank() {
+      const map = {};
+      let total = 0;
+      this.purchases.forEach(r => { const a = r.quantity*r.cost_price; map[r.category]=(map[r.category]||0)+a; total+=a; });
+      return Object.keys(map).map(name => ({ name, amount:map[name], pct: total? Math.round(map[name]/total*100):0 }))
+        .sort((a,b)=>b.amount-a.amount);
+    },
+    saleCurrentStock() {
+      if (!this.sf.style_code || !this.sf.size) return 0;
+      const row = this.stockList.find(r => r.style_code===this.sf.style_code && r.size===this.sf.size);
+      return row ? row.stock : 0;
+    },
+    saleOversell() {
+      return this.sf.style_code && this.sf.size && this.sf.quantity > this.saleCurrentStock;
+    },
+  },
+  methods: {
+    emptyPurchase() { return { style_code:'', category:'', supplier:'', size:'', quantity:1, cost_price:0, date: this.today(), remark:'' }; },
+    emptySale() { return { style_code:'', category:'', size:'', quantity:1, unit_price:0, retail_price:0, date: this.today(), remark:'' }; },
+    today() { const d = new Date(); return d.toISOString().slice(0,10); },
+    fmtMoney(n) { return (Number(n)||0).toLocaleString('zh-CN', { minimumFractionDigits:0, maximumFractionDigits:2 }); },
+    barHeight(v) { const max = Math.max(...this.dailySales.map(d => d.amount), 1); return Math.max(6, Math.round((v/max) * 160)); },
+    imgStyle(obj) {
+      const sc = (obj.style_code || obj.product && obj.product.style_code || 'XX');
+      const c = COST[sc.slice(0,2)] || '#7d8bff';
+      return { background: 'linear-gradient(135deg,' + c + ',#b06ab3)' };
+    },
+    go(p) { this.page = p; if (this.isMobile) this.mobileHidden = true; },
+    doLogin() {
+      if (!this.loginForm.username || !this.loginForm.password) { this.$message.warning('请输入账号和密码'); return; }
+      this.loggedIn = true; this.$message.success('登录成功');
+    },
+    logout() { this.loggedIn = false; this.loginForm.password = ''; this.page = 'dashboard'; },
+    uploadTip() { this.$message.info('原型演示：此处将上传图片并生成缩略图'); },
+    exportTip() { this.$message.success('原型演示：将导出 Excel 文件'); },
+    saved(msg) { this.$message.success(msg); },
+    noop() { this.$message.info('原型演示：筛选/操作已触发'); },
+
+    // 进货
+    onPurchaseStyle(val) {
+      const p = this.products.find(x => x.style_code === val);
+      if (p) { this.pf.category = p.category; this.pf.supplier = p.supplier; }
+    },
+    savePurchase() {
+      if (!this.pf.style_code) { this.$message.error('请填写款号'); return; }
+      if (!this.pf.quantity || !this.pf.cost_price) { this.$message.error('请填写数量与进货价'); return; }
+      this.ensureProduct(this.pf.style_code, this.pf.category, this.pf.supplier);
+      this.ensureDicts(this.pf);
+      this.purchases.unshift({ ...this.pf });
+      this.$message.success('进货已保存');
+      this.resetPurchase();
+    },
+    resetPurchase() { this.pf = this.emptyPurchase(); },
+    addBatchRow() { this.batchRows.push(this.emptyPurchase()); },
+    copyRow(i) { this.batchRows.splice(i+1, 0, { ...this.batchRows[i] }); },
+    saveBatch() {
+      const valid = this.batchRows.filter(r => r.style_code && r.quantity && r.cost_price);
+      if (!valid.length) { this.$message.error('请至少填写一行有效数据'); return; }
+      valid.forEach(r => { this.ensureProduct(r.style_code, r.category, r.supplier); this.ensureDicts(r); this.purchases.unshift({ ...r }); });
+      this.$message.success('已批量保存 ' + valid.length + ' 条进货');
+      this.batchRows = [this.emptyPurchase()];
+    },
+    delPurchase(i) { this.purchases.splice(this.purchases.indexOf(this.filteredPurchases[i]), 1); this.$message.success('已删除'); },
+
+    // 销售
+    onSaleStyle(val) {
+      const p = this.products.find(x => x.style_code === val);
+      if (p) { this.sf.category = p.category; this.sf.retail_price = p.retail_price; this.sf.unit_price = p.retail_price; }
+    },
+    saveSale() {
+      if (!this.sf.style_code || !this.sf.size) { this.$message.error('请选择款号与尺码'); return; }
+      if (this.saleOversell) { this.$message.warning('已保存，注意产生负库存'); }
+      else { this.$message.success('出库成功'); }
+      this.sales.unshift({ ...this.sf });
+      this.resetSale();
+    },
+    resetSale() { this.sf = this.emptySale(); },
+    delSale(i) { this.sales.splice(this.sales.indexOf(this.filteredSales[i]), 1); this.$message.success('已删除'); },
+
+    // 商品
+    openProduct(row) { this.pfEdit = row ? { ...row } : { style_code:'', name:'', category:'', supplier:'', retail_price:0, remark:'' }; this.productDialog = true; },
+    saveProduct() {
+      if (!this.pfEdit.style_code) { this.$message.error('请填写款号'); return; }
+      const idx = this.products.findIndex(p => p.id === this.pfEdit.id);
+      if (idx >= 0) this.products[idx] = { ...this.pfEdit };
+      else this.products.push({ ...this.pfEdit, id: Date.now() });
+      this.ensureDicts({ category:this.pfEdit.category, supplier:this.pfEdit.supplier });
+      this.$message.success('已保存');
+      this.productDialog = false;
+    },
+
+    // 字典
+    addDict(grp) {
+      const v = (this.newDict[grp]||'').trim();
+      if (!v) return;
+      if (!this.dicts[grp].includes(v)) this.dicts[grp].push(v);
+      this.newDict[grp] = '';
+    },
+    delDict(grp, i) { this.dicts[grp].splice(i, 1); },
+    ensureDicts(obj) {
+      if (obj.category && !this.dicts.category.includes(obj.category)) this.dicts.category.push(obj.category);
+      if (obj.supplier && !this.dicts.supplier.includes(obj.supplier)) this.dicts.supplier.push(obj.supplier);
+      if (obj.size && !this.dicts.size.includes(obj.size)) this.dicts.size.push(obj.size);
+    },
+    ensureProduct(sc, cat, sup) {
+      if (sc && !this.products.find(p => p.style_code === sc)) {
+        this.products.push({ id: Date.now(), style_code: sc, name:'', category: cat||'', supplier: sup||'', retail_price:0, remark:'自动建档' });
+        this.$message.info('款号 ' + sc + ' 已自动建档');
+      }
+    },
+  },
+  mounted() {
+    window.addEventListener('resize', () => { this.isMobile = window.innerWidth < 860; });
+  }
+});
+app.use(ElementPlus);
+const icons = window.ElementPlusIconsVue || {};
+Object.keys(icons).forEach(name => app.component(name, icons[name]));
+app.mount('#app');
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Python
+backend/.venv/
+__pycache__/
+*.py[cod]
+
+# Runtime data (SQLite DB lives here)
+backend/data/
+
+# Uploaded images (keep the folder, ignore contents)
+backend/static/images/*
+!backend/static/images/.gitkeep
+
+# Logs
+*.log
+backend/uvicorn.log
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Misc
+.DS_Store
+
+# opencode session state
+.omo/
