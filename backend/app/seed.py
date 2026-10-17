@@ -2,6 +2,7 @@
 from . import models
 from .config import DEFAULT_PASSWORD, DEFAULT_USERNAME
 from .database import SessionLocal
+from .runtime_config import SEED_DEMO
 from .security import hash_password
 
 
@@ -20,7 +21,8 @@ def init_db() -> None:
             for n in ["杭州优品服饰", "广州锦程制衣", "义乌恒达针织"]:
                 db.add(models.Supplier(name=n))
         db.commit()
-        _seed_demo(db)
+        if SEED_DEMO:
+            _seed_demo(db)
     finally:
         db.close()
 

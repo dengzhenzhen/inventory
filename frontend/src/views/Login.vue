@@ -53,10 +53,22 @@ async function onSubmit() {
 
 <style scoped>
 .login-wrap {
+  position: relative; overflow: hidden;
   height: 100vh; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #5b6ef5 0%, #8a7bf5 60%, #b06ab3 100%);
+  background-color: #ffe3ef;
+  background-image: url('/hello-kitty-pattern.svg');
+  background-size: 200px 200px;
+  background-repeat: repeat;
+  background-position: center;
 }
-.login-card { width: 380px; background: #fff; border-radius: 16px; padding: 40px 36px 30px; box-shadow: 0 20px 60px rgba(20, 25, 60, 0.35); }
+.login-wrap::before,
+.login-wrap::after {
+  content: ""; position: absolute; pointer-events: none;
+  background: url('/hello-kitty.svg') center / contain no-repeat;
+}
+.login-wrap::before { left: -70px; bottom: -60px; width: 320px; height: 320px; opacity: 0.95; }
+.login-wrap::after { right: -60px; top: -50px; width: 260px; height: 260px; opacity: 0.9; }
+.login-card { position: relative; z-index: 1; width: 380px; background: #fff; border-radius: 16px; padding: 40px 36px 30px; box-shadow: 0 20px 60px rgba(20, 25, 60, 0.35); }
 .login-logo {
   width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 16px; display: flex; align-items: center;
   justify-content: center; background: linear-gradient(135deg, #5b6ef5, #8a7bf5); color: #fff; font-size: 26px; font-weight: 700;

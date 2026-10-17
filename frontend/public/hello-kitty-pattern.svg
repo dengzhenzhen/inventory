@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" aria-hidden="true">
+  <defs>
+    <!-- reusable Hello Kitty motif, drawn in a 200x200 space -->
+    <g id="hkMotif">
+      <path d="M52 30
+               C62 34 72 52 78 66
+               C92 58 108 58 122 66
+               C128 52 138 34 148 30
+               C162 36 170 54 172 74
+               C174 100 172 128 160 148
+               C146 170 124 180 100 180
+               C76 180 54 170 40 148
+               C28 128 26 100 28 74
+               C30 54 38 36 52 30 Z"
+            fill="#ffffff" stroke="#e75480" stroke-width="6" stroke-linejoin="round"/>
+      <g stroke="#e75480" stroke-width="5" stroke-linecap="round">
+        <line x1="56" y1="106" x2="18" y2="96"/>
+        <line x1="54" y1="118" x2="14" y2="118"/>
+        <line x1="56" y1="130" x2="18" y2="140"/>
+        <line x1="144" y1="106" x2="182" y2="96"/>
+        <line x1="146" y1="118" x2="186" y2="118"/>
+        <line x1="144" y1="130" x2="182" y2="140"/>
+      </g>
+      <ellipse cx="76" cy="112" rx="10" ry="13" fill="#e75480"/>
+      <ellipse cx="124" cy="112" rx="10" ry="13" fill="#e75480"/>
+      <ellipse cx="100" cy="132" rx="10" ry="7.5" fill="#f6c945"/>
+      <g stroke="#e75480" stroke-width="3" stroke-linejoin="round">
+        <path d="M56 46 L32 30 L32 62 Z" fill="#ff9ec0"/>
+        <path d="M56 46 L80 30 L80 62 Z" fill="#ff9ec0"/>
+        <circle cx="56" cy="46" r="8" fill="#ff9ec0"/>
+      </g>
+    </g>
+  </defs>
+
+  <!-- faint, seamless tile (motifs kept fully inside the tile bounds) -->
+  <g opacity="0.20">
+    <use href="#hkMotif" transform="translate(6 6) scale(0.36)"/>
+    <use href="#hkMotif" transform="translate(88 24) scale(0.30)"/>
+    <use href="#hkMotif" transform="translate(18 92) scale(0.30)"/>
+    <use href="#hkMotif" transform="translate(94 96) scale(0.32)"/>
+  </g>
+</svg>

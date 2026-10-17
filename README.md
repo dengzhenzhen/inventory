@@ -110,6 +110,13 @@ npm run dev
 - 本期不含：退货、分类多级、Excel 导入（P1）
 - 建表使用 SQLAlchemy `create_all`，暂未接入 Alembic 迁移
 
+## Windows 打包与使用
+
+Windows 版为单文件 `Inventory.exe`，使用者无需安装 Python。
+
+- 构建与 CI：[docs/BUILD-WINDOWS.md](docs/BUILD-WINDOWS.md)
+- 使用说明（SmartScreen、防火墙、局域网访问、备份）：[docs/USER-GUIDE-WINDOWS.md](docs/USER-GUIDE-WINDOWS.md)
+
 ## 相关文档
 
 - 产品需求分析：`docs/PRD.md`

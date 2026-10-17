@@ -6,7 +6,10 @@
 html, body, #app { height: 100%; margin: 0; }
 body {
   font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
-  background: #f4f6fb;
+  background-color: #fdf1f6;
+  background-image: url('/hello-kitty-pattern.svg');
+  background-size: 180px 180px;
+  background-repeat: repeat;
   color: #2c3350;
 }
 .page-card {

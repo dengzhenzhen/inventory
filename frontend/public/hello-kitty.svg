@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Hello Kitty">
+  <defs>
+    <linearGradient id="hkBow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9ec0"/>
+      <stop offset="1" stop-color="#e75480"/>
+    </linearGradient>
+  </defs>
+
+  <!-- head + ears silhouette (single clean outline) -->
+  <path d="M52 30
+           C62 34 72 52 78 66
+           C92 58 108 58 122 66
+           C128 52 138 34 148 30
+           C162 36 170 54 172 74
+           C174 100 172 128 160 148
+           C146 170 124 180 100 180
+           C76 180 54 170 40 148
+           C28 128 26 100 28 74
+           C30 54 38 36 52 30 Z"
+        fill="#ffffff" stroke="#2f2f36" stroke-width="3.5" stroke-linejoin="round"/>
+
+  <!-- whiskers -->
+  <g stroke="#2f2f36" stroke-width="3" stroke-linecap="round">
+    <line x1="56" y1="106" x2="18" y2="96"/>
+    <line x1="54" y1="118" x2="14" y2="118"/>
+    <line x1="56" y1="130" x2="18" y2="140"/>
+    <line x1="144" y1="106" x2="182" y2="96"/>
+    <line x1="146" y1="118" x2="186" y2="118"/>
+    <line x1="144" y1="130" x2="182" y2="140"/>
+  </g>
+
+  <!-- eyes -->
+  <ellipse cx="76" cy="112" rx="9" ry="12" fill="#2f2f36"/>
+  <ellipse cx="124" cy="112" rx="9" ry="12" fill="#2f2f36"/>
+
+  <!-- nose -->
+  <ellipse cx="100" cy="132" rx="10" ry="7.5" fill="#f6c945"/>
+
+  <!-- bow -->
+  <g>
+    <path d="M56 46 L32 30 L32 62 Z" fill="url(#hkBow)" stroke="#c84570" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M56 46 L80 30 L80 62 Z" fill="url(#hkBow)" stroke="#c84570" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="56" cy="46" r="8" fill="url(#hkBow)" stroke="#c84570" stroke-width="2"/>
+  </g>
+</svg>
