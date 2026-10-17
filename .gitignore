@@ -13,6 +13,7 @@ backend/static/images/*
 # Logs
 *.log
 backend/uvicorn.log
+backend/.uvicorn.pid
 
 # Node
 frontend/node_modules/
