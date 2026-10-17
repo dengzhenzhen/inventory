@@ -119,7 +119,7 @@ Remove-Item Env:\INVENTORY_NO_BROWSER
 
 ## 4. 使用 GitHub Actions 构建（推荐）
 
-仓库包含 `.github/workflows/build-windows.yml`。它在 `windows-latest` 上完成前端构建、依赖安装、PyInstaller 打包和冒烟测试，不依赖本地环境，适合正式出包。
+仓库包含 `.github/workflows/build-windows.yml`。它在 `windows-latest` 上完成前端构建、依赖安装和 PyInstaller 打包，不依赖本地环境。CI 不再自动执行冒烟测试，产物需要在 Windows 上手动验证。
 
 ### 4.1 触发方式
 
@@ -139,7 +139,7 @@ git push origin v0.1.0
 
 ### 4.2 下载产物
 
-运行成功后，打开该次运行详情页，在页面底部 **Artifacts** 区域下载 Windows 构建压缩包。压缩包保留目录结构，`Inventory.exe` 位于其中的 `dist\Inventory.exe`，`smoke-logs\` 是冒烟测试日志。
+运行成功后，打开该次运行详情页，在页面底部 **Artifacts** 区域下载 Windows 构建压缩包，解压后可得到 `dist\Inventory.exe`。
 
 Artifact 有保留期限，过期会被清理。正式发布时请及时下载并另行归档。CI 只负责构建和测试，不会替你做代码签名。
 
@@ -183,7 +183,7 @@ Get-FileHash .\dist\Inventory.exe -Algorithm SHA256
 
 构建目录尽量使用纯英文和数字，例如 `C:\inventory-build`。`C:\Users\张三\Desktop\进销存` 这类路径可能在 PyInstaller 收集文件或解压临时目录时出问题，而且报错往往不直观。
 
-运行目录方面，CI 已经包含“把 exe 放到中文目录后启动”的冒烟检查，正常可以使用。但为了减少疑难问题，仍建议把程序放在纯英文路径下。
+运行目录方面，建议在 Windows 上手动把 exe 放到中文目录启动验证。为减少疑难问题，仍建议把程序放在纯英文路径下。
 
 ### 5.4 onefile 启动慢
 
