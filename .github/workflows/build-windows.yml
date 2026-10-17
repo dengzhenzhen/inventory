@@ -349,20 +349,22 @@ jobs:
                   Remove-Item Env:PORT -ErrorAction SilentlyContinue
                   Fail-Smoke "could not bind dummy TcpListener on port ${conflictPort}: $($_.Exception.Message)"
               }
-              if (-not $listener.Server.IsBound) {
-                  $listener.Stop()
-                  $listener = $null
-                  Remove-Item Env:PORT -ErrorAction SilentlyContinue
-                  Fail-Smoke "dummy TcpListener did not bind port $conflictPort"
+              $probe = [System.Net.Sockets.TcpClient]::new()
+              try {
+                  $probe.Connect('127.0.0.1', $conflictPort)
+                  $holding = $probe.Connected
+              } catch {
+                  $holding = $false
+              } finally {
+                  $probe.Dispose()
               }
-              $holding = Get-NetTCPConnection -LocalPort $conflictPort -State Listen -ErrorAction SilentlyContinue
               if (-not $holding) {
                   $listener.Stop()
                   $listener = $null
                   Remove-Item Env:PORT -ErrorAction SilentlyContinue
-                  Fail-Smoke "no LISTEN socket on port $conflictPort after TcpListener.Start()"
+                  Fail-Smoke "no TCP listener accepted connections on 127.0.0.1:${conflictPort}"
               }
-              Pass-Smoke "exclusive TcpListener is holding 0.0.0.0:$conflictPort"
+              Pass-Smoke "exclusive TcpListener is holding 0.0.0.0:${conflictPort}"
 
               $conflictOut = Join-Path $logs 'run-conflict.stdout.log'
               $conflictErr = Join-Path $logs 'run-conflict.stderr.log'
