@@ -154,6 +154,16 @@ def _is_port_in_use_error(exc: OSError) -> bool:
     return getattr(exc, "winerror", None) == _WINDOWS_PORT_IN_USE
 
 
+def _port_is_open(port: int) -> bool:
+    """确认端口上是否已有监听者，用于错误码不可靠时兜底判定。"""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    probe.settimeout(0.5)
+    try:
+        return probe.connect_ex(("127.0.0.1", port)) == 0
+    finally:
+        probe.close()
+
+
 def _start_browser_opener(server, port: int) -> None:
     """后台守护线程轮询 server.started，就绪后再打开浏览器。"""
     if _browser_suppressed():
@@ -218,11 +228,12 @@ def main() -> int:
         try:
             sock = _bind_socket(host, port)
         except OSError as exc:
-            if _is_port_in_use_error(exc) and _wait_until_healthy(port, timeout=2.0):
+            port_in_use = _is_port_in_use_error(exc) or _port_is_open(port)
+            if port_in_use and _wait_until_healthy(port, timeout=2.0):
                 print(f"服务已在运行：http://localhost:{port}/")
                 _open_browser(port)
                 return 0
-            if _is_port_in_use_error(exc):
+            if port_in_use:
                 print(
                     f"端口 {port} 被其他程序占用，请修改 config.ini 或关闭占用程序",
                     file=sys.stderr,

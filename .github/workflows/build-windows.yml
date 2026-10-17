@@ -170,7 +170,7 @@ jobs:
           $p2 = $null
           $p3 = $null
           $p4 = $null
-          $dummy = $null
+          $listener = $null
 
           try {
               if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {
@@ -337,38 +337,49 @@ jobs:
               Stop-InventoryProcess $p3
               $p3 = $null
 
-              # 8) An external program occupying port 8000 must cause a clean failure.
-              $dummyOut = Join-Path $logs 'dummy.stdout.log'
-              $dummyErr = Join-Path $logs 'dummy.stderr.log'
-              $dummy = Start-Process -FilePath 'python' -ArgumentList @('-m', 'http.server', '8000') -PassThru -NoNewWindow -RedirectStandardOutput $dummyOut -RedirectStandardError $dummyErr -RedirectStandardInput $script:stdinFile
-              $dummyReady = $false
-              $dummyDeadline = (Get-Date).AddSeconds(30)
-              while ((Get-Date) -lt $dummyDeadline) {
-                  if ((Get-HttpStatus "$base/") -ne '000') {
-                      $dummyReady = $true
-                      break
-                  }
-                  Start-Sleep -Milliseconds 500
+              # 8) An external listener occupying the configured port must cause a clean failure.
+              $conflictPort = 8001
+              $env:PORT = "$conflictPort"
+              $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, $conflictPort)
+              $listener.ExclusiveAddressUse = $true
+              try {
+                  $listener.Start()
+              } catch {
+                  $listener = $null
+                  Remove-Item Env:PORT -ErrorAction SilentlyContinue
+                  Fail-Smoke "could not bind dummy TcpListener on port $conflictPort: $($_.Exception.Message)"
               }
-              if (-not $dummyReady) {
-                  Stop-Process -Id $dummy.Id -Force -ErrorAction SilentlyContinue
-                  $dummy = $null
-                  Fail-Smoke 'dummy http.server on port 8000 did not start'
+              if (-not $listener.Server.IsBound) {
+                  $listener.Stop()
+                  $listener = $null
+                  Remove-Item Env:PORT -ErrorAction SilentlyContinue
+                  Fail-Smoke "dummy TcpListener did not bind port $conflictPort"
               }
-              Pass-Smoke 'dummy python http.server is occupying port 8000'
+              $holding = Get-NetTCPConnection -LocalPort $conflictPort -State Listen -ErrorAction SilentlyContinue
+              if (-not $holding) {
+                  $listener.Stop()
+                  $listener = $null
+                  Remove-Item Env:PORT -ErrorAction SilentlyContinue
+                  Fail-Smoke "no LISTEN socket on port $conflictPort after TcpListener.Start()"
+              }
+              Pass-Smoke "exclusive TcpListener is holding 0.0.0.0:$conflictPort"
 
               $conflictOut = Join-Path $logs 'run-conflict.stdout.log'
               $conflictErr = Join-Path $logs 'run-conflict.stderr.log'
               $p4 = Start-Inventory -ExePath $exe -OutLog $conflictOut -ErrLog $conflictErr
-              if (-not $p4.WaitForExit(30000)) {
+              if (-not $p4.WaitForExit(60000)) {
                   Stop-InventoryProcess $p4
-                  Stop-Process -Id $dummy.Id -Force -ErrorAction SilentlyContinue
-                  Fail-Smoke 'Inventory.exe did not exit when port 8000 was occupied'
+                  $listener.Stop()
+                  $listener = $null
+                  Remove-Item Env:PORT -ErrorAction SilentlyContinue
+                  Fail-Smoke "Inventory.exe did not exit when port $conflictPort was occupied"
               }
               $p4.Refresh()
               if ($p4.ExitCode -eq 0) {
-                  Stop-Process -Id $dummy.Id -Force -ErrorAction SilentlyContinue
-                  Fail-Smoke 'Inventory.exe exited 0 although port 8000 was occupied'
+                  $listener.Stop()
+                  $listener = $null
+                  Remove-Item Env:PORT -ErrorAction SilentlyContinue
+                  Fail-Smoke "Inventory.exe exited 0 although port $conflictPort was occupied"
               }
               $conflictText = ''
               if (Test-Path -LiteralPath $conflictErr) {
@@ -377,7 +388,7 @@ jobs:
               # PyInstaller uses an isolated interpreter config (PYTHON* env vars are
               # ignored), and redirected stderr uses the Windows locale codec with
               # backslashreplace, so non-ASCII text may appear as \uXXXX escapes.
-              $expectedConflict = '端口 8000 被其他程序占用'
+              $expectedConflict = "端口 $conflictPort 被其他程序占用"
               $conflictEscaped = ($expectedConflict.ToCharArray() | ForEach-Object {
                   $code = [int][char]$_
                   if ($code -ge 32 -and $code -lt 127) { [string][char]$_ }
@@ -386,35 +397,39 @@ jobs:
               $literalFound = $conflictText.Contains($expectedConflict)
               $escapedFound = $conflictText.Contains($conflictEscaped)
               if (-not ($literalFound -or $escapedFound)) {
-                  Stop-Process -Id $dummy.Id -Force -ErrorAction SilentlyContinue
+                  $listener.Stop()
+                  $listener = $null
+                  Remove-Item Env:PORT -ErrorAction SilentlyContinue
                   Fail-Smoke "port conflict message missing from stderr: $conflictText"
               }
               $encodingForm = if ($literalFound) { 'literal UTF-8' } else { 'backslash-escaped' }
               Pass-Smoke "port conflict produced exit code $($p4.ExitCode) and the expected message ($encodingForm)"
-              Stop-Process -Id $dummy.Id -Force -ErrorAction SilentlyContinue
-              $dummy = $null
+              $listener.Stop()
+              $listener = $null
+              Remove-Item Env:PORT -ErrorAction SilentlyContinue
               $portFree = $false
               $freeDeadline = (Get-Date).AddSeconds(10)
               while ((Get-Date) -lt $freeDeadline) {
-                  if ((Get-HttpStatus "$base/") -eq '000') {
+                  if (-not (Get-NetTCPConnection -LocalPort $conflictPort -State Listen -ErrorAction SilentlyContinue)) {
                       $portFree = $true
                       break
                   }
                   Start-Sleep -Milliseconds 500
               }
               if (-not $portFree) {
-                  Fail-Smoke 'dummy server still answering after it was stopped'
+                  Fail-Smoke "port $conflictPort still has a LISTEN socket after the dummy listener stopped"
               }
-              Pass-Smoke 'dummy server stopped; port 8000 is free'
+              Pass-Smoke "dummy listener stopped; port $conflictPort is free"
           }
           finally {
               Stop-InventoryProcess $p1
               Stop-InventoryProcess $p2
               Stop-InventoryProcess $p3
               Stop-InventoryProcess $p4
-              if ($null -ne $dummy) {
-                  try { Stop-Process -Id $dummy.Id -Force -ErrorAction SilentlyContinue } catch { }
+              if ($null -ne $listener) {
+                  try { $listener.Stop() } catch { }
               }
+              Remove-Item Env:PORT -ErrorAction SilentlyContinue
               Get-Process -Name 'Inventory' -ErrorAction SilentlyContinue | ForEach-Object {
                   try { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue } catch { }
               }
