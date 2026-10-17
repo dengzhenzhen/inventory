@@ -136,16 +136,21 @@ def _bind_socket(host: str, port: int) -> socket.socket:
     """绑定监听端口；POSIX 上允许重启后复用 TIME_WAIT，Windows 上不设置。"""
     family = socket.AF_INET6 if ":" in host else socket.AF_INET
     sock = socket.socket(family, socket.SOCK_STREAM)
-    if sys.platform != "win32":
-        # Windows 的 SO_REUSEADDR 会允许抢占已被占用的端口，必须禁用。
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((host, port))
-    return sock
+    try:
+        if sys.platform != "win32":
+            # Windows 的 SO_REUSEADDR 会允许抢占已被占用的端口，必须禁用。
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((host, port))
+        return sock
+    except OSError:
+        sock.close()
+        raise
 
 
 def _is_port_in_use_error(exc: OSError) -> bool:
-    if exc.errno == errno.EADDRINUSE:
+    if exc.errno in (errno.EADDRINUSE, _WINDOWS_PORT_IN_USE):
         return True
+    # Python on Windows may expose the WSA code through errno instead of winerror.
     return getattr(exc, "winerror", None) == _WINDOWS_PORT_IN_USE
 
 
@@ -169,7 +174,9 @@ def _startup_failure(exc: BaseException) -> int:
     traceback.print_exception(type(exc), exc, exc.__traceback__)
     if getattr(sys, "frozen", False):
         try:
-            input("按回车退出...")
+            # 仅交互式控制台等待回车；CI/重定向 stdin 必须立即退出，不能阻塞。
+            if sys.stdin is not None and sys.stdin.isatty():
+                input("按回车退出...")
         except Exception:  # noqa: BLE001 - 无控制台时直接退出
             pass
     return 1
@@ -221,7 +228,8 @@ def main() -> int:
                     file=sys.stderr,
                 )
                 return 1
-            raise
+            print(f"无法绑定 {host}:{port}：{exc}", file=sys.stderr)
+            return 1
 
         try:
             # 5. 配置引导完成后才导入应用。
