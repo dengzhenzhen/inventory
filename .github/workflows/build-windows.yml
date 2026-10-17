@@ -347,7 +347,7 @@ jobs:
               } catch {
                   $listener = $null
                   Remove-Item Env:PORT -ErrorAction SilentlyContinue
-                  Fail-Smoke "could not bind dummy TcpListener on port $conflictPort: $($_.Exception.Message)"
+                  Fail-Smoke "could not bind dummy TcpListener on port ${conflictPort}: $($_.Exception.Message)"
               }
               if (-not $listener.Server.IsBound) {
                   $listener.Stop()
