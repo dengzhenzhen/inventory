@@ -138,7 +138,11 @@ body {
     --el-drawer-bg-color: #1f2544;
     background: #1f2544;
   }
-  .mobile-nav-drawer .el-drawer__body { padding: 0; overflow-y: auto; }
+  .mobile-nav-drawer .el-drawer__body {
+    padding: 0; overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .mobile-nav-drawer .el-drawer__body::-webkit-scrollbar { display: none; }
 }
 
 @media (max-width: 640px) {

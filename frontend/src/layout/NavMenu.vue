@@ -39,7 +39,12 @@ function onSelect() {
   color: #fff; font-weight: 700; font-size: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .logo .dot { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #5b6ef5, #b06ab3); display: inline-block; }
-.nav-menu :deep(.el-menu) { border-right: none; background: transparent; flex: 1; overflow-y: auto; }
+.nav-menu > :deep(.el-menu) {
+  border-right: none; background: transparent; flex: 1; overflow-y: auto;
+  scrollbar-width: none;
+}
+.nav-menu > :deep(.el-menu)::-webkit-scrollbar { display: none; }
+.nav-menu :deep(.el-menu--inline) { overflow: visible; }
 .nav-menu :deep(.el-menu-item), .nav-menu :deep(.el-sub-menu__title) { color: #aab1cc; height: 46px; }
 .nav-menu :deep(.el-menu-item:hover), .nav-menu :deep(.el-sub-menu__title:hover) { background: rgba(255, 255, 255, 0.06); color: #fff; }
 .nav-menu :deep(.el-menu-item.is-active) { color: #fff; background: linear-gradient(90deg, var(--brand), rgba(91, 110, 245, 0.35)); border-left: 3px solid #fff; }
