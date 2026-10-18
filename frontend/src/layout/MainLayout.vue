@@ -32,6 +32,8 @@
     >
       <NavMenu @navigate="drawerOpen = false" />
     </el-drawer>
+
+    <LanAccessButton />
   </el-container>
 </template>
 
@@ -40,6 +42,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import NavMenu from './NavMenu.vue'
+import LanAccessButton from '../components/LanAccessButton.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -91,6 +91,10 @@ export const statsApi = {
   categoryRank: (params) => http.get('/stats/category-rank', { params }),
 }
 
+export const systemApi = {
+  lanUrl: (params) => http.get('/system/lan-url', { params }),
+}
+
 export async function downloadFile(path, filename) {
   const resp = await http.get(path, { responseType: 'blob' })
   const blob = resp instanceof Blob ? resp : new Blob([resp])
