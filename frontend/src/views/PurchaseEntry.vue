@@ -7,7 +7,7 @@
 
     <el-form v-if="!batch" :model="form" label-width="80px" style="max-width: 760px">
       <el-row :gutter="16">
-        <el-col :span="12">
+        <el-col :xs="24" :sm="12">
           <el-form-item label="款号" required>
             <el-select v-model="form.style_code" filterable allow-create default-first-option placeholder="选择或输入新款号" style="width: 100%" @change="onStyleChange">
               <el-option v-for="p in products" :key="p.id" :label="p.style_code + (p.name ? ' · ' + p.name : '')" :value="p.style_code" />
@@ -15,31 +15,31 @@
             <div class="muted" v-if="form.style_code && !products.find((p) => p.style_code === form.style_code)">该款号不存在，保存时将自动新建档案</div>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+        <el-col :xs="24" :sm="12">
           <el-form-item label="分类">
             <el-select v-model="form.category" filterable allow-create placeholder="选择或输入" style="width: 100%">
               <el-option v-for="c in dicts.category" :key="c.id" :label="c.name" :value="c.name" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+        <el-col :xs="24" :sm="12">
           <el-form-item label="厂家">
             <el-select v-model="form.supplier" filterable allow-create placeholder="选择或输入" style="width: 100%">
               <el-option v-for="s in dicts.supplier" :key="s.id" :label="s.name" :value="s.name" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+        <el-col :xs="24" :sm="12">
           <el-form-item label="尺码">
             <el-select v-model="form.size" filterable allow-create placeholder="选择或输入" style="width: 100%">
               <el-option v-for="s in dicts.size" :key="s.id" :label="s.name" :value="s.name" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12"><el-form-item label="数量" required><el-input-number v-model="form.quantity" :min="1" style="width: 100%" /></el-form-item></el-col>
-        <el-col :span="12"><el-form-item label="进货价" required><el-input-number v-model="form.cost_price" :min="0" :precision="2" style="width: 100%" /></el-form-item></el-col>
-        <el-col :span="12"><el-form-item label="日期" required><el-date-picker v-model="form.purchase_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item></el-col>
-        <el-col :span="12">
+        <el-col :xs="24" :sm="12"><el-form-item label="数量" required><el-input-number v-model="form.quantity" :min="1" style="width: 100%" /></el-form-item></el-col>
+        <el-col :xs="24" :sm="12"><el-form-item label="进货价" required><el-input-number v-model="form.cost_price" :min="0" :precision="2" style="width: 100%" /></el-form-item></el-col>
+        <el-col :xs="24" :sm="12"><el-form-item label="日期" required><el-date-picker v-model="form.purchase_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item></el-col>
+        <el-col :xs="24" :sm="12">
           <el-form-item label="主图">
             <div class="upload-box" @click="pickImage">
               <img v-if="form.main_image" :src="imgUrl(form.main_image)" style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px" />

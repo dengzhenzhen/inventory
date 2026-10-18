@@ -3,7 +3,7 @@
     <el-tabs v-model="tab">
       <el-tab-pane label="字典管理" name="dict">
         <el-row :gutter="20">
-          <el-col :span="8" v-for="grp in groups" :key="grp.kind">
+          <el-col :xs="24" :md="8" v-for="grp in groups" :key="grp.kind">
             <div style="font-weight: 600; margin-bottom: 10px">{{ grp.label }}</div>
             <el-tag
               v-for="item in dicts[grp.kind]"
@@ -15,8 +15,8 @@
             <el-input
               v-model="newName[grp.kind]"
               size="small"
+              class="dict-input"
               :placeholder="'新增' + grp.label"
-              style="width: 170px"
               @keyup.enter="addDict(grp.kind)"
             >
               <template #append><el-button @click="addDict(grp.kind)">添加</el-button></template>
@@ -106,3 +106,10 @@ onMounted(() => {
   groups.forEach((g) => loadDict(g.kind))
 })
 </script>
+
+<style scoped>
+.dict-input { width: 170px; }
+@media (max-width: 768px) {
+  .dict-input { width: 100% !important; }
+}
+</style>

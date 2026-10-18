@@ -3,30 +3,30 @@
     <div class="card-title">销售开单</div>
     <el-form :model="form" label-width="80px">
       <el-row :gutter="16">
-        <el-col :span="12">
+        <el-col :xs="24" :sm="12">
           <el-form-item label="款号" required>
             <el-select v-model="form.style_code" filterable placeholder="搜索款号" style="width: 100%" @change="onStyleChange">
               <el-option v-for="p in products" :key="p.id" :label="p.style_code + (p.name ? ' · ' + p.name : '')" :value="p.style_code" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12"><el-form-item label="分类"><el-input v-model="categoryName" disabled /></el-form-item></el-col>
-        <el-col :span="12">
+        <el-col :xs="24" :sm="12"><el-form-item label="分类"><el-input v-model="categoryName" disabled /></el-form-item></el-col>
+        <el-col :xs="24" :sm="12">
           <el-form-item label="尺码" required>
             <el-select v-model="form.size" placeholder="选择尺码" style="width: 100%" @change="refreshStock">
               <el-option v-for="s in dicts.size" :key="s.id" :label="s.name" :value="s.name" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+        <el-col :xs="24" :sm="12">
           <el-form-item label="当前库存">
             <el-tag :type="currentStock < 0 ? 'danger' : currentStock < severe ? 'warning' : 'success'" size="large">{{ currentStock }} 件</el-tag>
             <span class="muted" style="margin-left: 8px">零售价 ￥{{ fmtMoney(form.retail_price) }}</span>
           </el-form-item>
         </el-col>
-        <el-col :span="12"><el-form-item label="数量" required><el-input-number v-model="form.quantity" :min="1" style="width: 100%" /></el-form-item></el-col>
-        <el-col :span="12"><el-form-item label="售价" required><el-input-number v-model="form.unit_price" :min="0" :precision="2" style="width: 100%" /></el-form-item></el-col>
-        <el-col :span="12"><el-form-item label="日期" required><el-date-picker v-model="form.sale_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item></el-col>
+        <el-col :xs="24" :sm="12"><el-form-item label="数量" required><el-input-number v-model="form.quantity" :min="1" style="width: 100%" /></el-form-item></el-col>
+        <el-col :xs="24" :sm="12"><el-form-item label="售价" required><el-input-number v-model="form.unit_price" :min="0" :precision="2" style="width: 100%" /></el-form-item></el-col>
+        <el-col :xs="24" :sm="12"><el-form-item label="日期" required><el-date-picker v-model="form.sale_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item></el-col>
         <el-col :span="24"><el-form-item label="备注"><el-input v-model="form.remark" type="textarea" :rows="2" /></el-form-item></el-col>
       </el-row>
 
