@@ -14,7 +14,7 @@
     </div>
 
     <el-row :gutter="16">
-      <el-col :span="14">
+      <el-col :xs="24" :sm="14">
         <div class="page-card">
           <div class="card-title">每日销售金额</div>
           <div class="bars" v-if="daily.length">
@@ -27,7 +27,7 @@
           <el-empty v-else description="暂无数据" />
         </div>
       </el-col>
-      <el-col :span="10">
+      <el-col :xs="24" :sm="10">
         <div class="page-card">
           <div class="card-title">分类进货占比</div>
           <div v-for="c in rank" :key="c.name" class="rank-row">
@@ -70,6 +70,7 @@ onMounted(load)
 </script>
 
 <style scoped>
-.rank-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.rank-row .name { width: 70px; font-size: 13px; }
+.rank-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; min-width: 0; }
+.rank-row .name { width: 70px; font-size: 13px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-row .muted { flex: none; }
 </style>
