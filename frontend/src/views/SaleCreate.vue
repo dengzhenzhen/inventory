@@ -5,9 +5,14 @@
       <el-row :gutter="16">
         <el-col :xs="24" :sm="12">
           <el-form-item label="款号" required>
-            <el-select v-model="form.style_code" filterable placeholder="搜索款号" style="width: 100%" @change="onStyleChange">
-              <el-option v-for="p in products" :key="p.id" :label="p.style_code + (p.name ? ' · ' + p.name : '')" :value="p.style_code" />
-            </el-select>
+            <div class="style-picker">
+              <el-select v-model="form.style_code" filterable placeholder="搜索款号" style="flex: 1; min-width: 0" @change="onStyleChange">
+                <el-option v-for="p in products" :key="p.id" :label="p.style_code + (p.name ? ' · ' + p.name : '')" :value="p.style_code" />
+              </el-select>
+              <el-button class="scan-btn" title="扫描条形码或二维码" @click="scanOpen = true">
+                <el-icon><Camera /></el-icon><span class="scan-label">扫码</span>
+              </el-button>
+            </div>
           </el-form-item>
         </el-col>
         <el-col :xs="24" :sm="12"><el-form-item label="分类"><el-input v-model="categoryName" disabled /></el-form-item></el-col>
@@ -40,6 +45,8 @@
         <el-button @click="reset">重置</el-button>
       </el-form-item>
     </el-form>
+
+    <ScanDialog v-model="scanOpen" @detected="applyScannedCode" />
   </div>
 </template>
 
@@ -48,11 +55,13 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { dictApi, productApi, saleApi, stockApi } from '../api'
 import { fmtMoney, today } from '../utils'
+import ScanDialog from '../components/ScanDialog.vue'
 
 const dicts = reactive({ size: [] })
 const products = ref([])
 const categoryName = ref('')
 const currentStock = ref(0)
+const scanOpen = ref(false)
 const severe = 3
 const saving = ref(false)
 
@@ -76,6 +85,16 @@ function onStyleChange(code) {
     form.unit_price = p.retail_price || 0
   }
   refreshStock()
+}
+
+function applyScannedCode(code) {
+  form.style_code = code
+  onStyleChange(code)
+  if (products.value.some((p) => p.style_code === code)) {
+    ElMessage.success(`已扫入款号：${code}`)
+  } else {
+    ElMessage.warning(`未找到款号 ${code} 的商品档案，请先在“商品档案”中创建`)
+  }
 }
 async function refreshStock() {
   if (!form.style_code || !form.size) {
@@ -113,3 +132,11 @@ onMounted(async () => {
   await loadProducts()
 })
 </script>
+
+<style scoped>
+.style-picker { display: flex; gap: 8px; width: 100%; }
+.scan-btn { flex: none; }
+@media (max-width: 480px) {
+  .scan-label { display: none; }
+}
+</style>

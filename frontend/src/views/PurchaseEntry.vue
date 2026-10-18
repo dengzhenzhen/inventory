@@ -9,9 +9,14 @@
       <el-row :gutter="16">
         <el-col :xs="24" :sm="12">
           <el-form-item label="款号" required>
-            <el-select v-model="form.style_code" filterable allow-create default-first-option placeholder="选择或输入新款号" style="width: 100%" @change="onStyleChange">
-              <el-option v-for="p in products" :key="p.id" :label="p.style_code + (p.name ? ' · ' + p.name : '')" :value="p.style_code" />
-            </el-select>
+            <div class="style-picker">
+              <el-select v-model="form.style_code" filterable allow-create default-first-option placeholder="选择或输入新款号" style="flex: 1; min-width: 0" @change="onStyleChange">
+                <el-option v-for="p in products" :key="p.id" :label="p.style_code + (p.name ? ' · ' + p.name : '')" :value="p.style_code" />
+              </el-select>
+              <el-button class="scan-btn" title="扫描条形码或二维码" @click="scanOpen = true">
+                <el-icon><Camera /></el-icon><span class="scan-label">扫码</span>
+              </el-button>
+            </div>
             <div class="muted" v-if="form.style_code && !products.find((p) => p.style_code === form.style_code)">该款号不存在，保存时将自动新建档案</div>
           </el-form-item>
         </el-col>
@@ -77,6 +82,8 @@
         <el-button type="primary" :loading="saving" style="margin-left: 8px" @click="saveBatch">批量保存（{{ rows.length }} 条）</el-button>
       </div>
     </div>
+
+    <ScanDialog v-model="scanOpen" @detected="applyScannedCode" />
   </div>
 </template>
 
@@ -85,9 +92,11 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { dictApi, productApi, purchaseApi, uploadApi } from '../api'
 import { imgUrl, today } from '../utils'
+import ScanDialog from '../components/ScanDialog.vue'
 
 const dicts = reactive({ category: [], supplier: [], size: [] })
 const products = ref([])
+const scanOpen = ref(false)
 const batch = ref(false)
 const saving = ref(false)
 const fileInput = ref(null)
@@ -116,6 +125,12 @@ function onStyleChange(code) {
     form.supplier = p.supplier_name || ''
     if (p.main_image) form.main_image = p.main_image
   }
+}
+
+function applyScannedCode(code) {
+  form.style_code = code
+  onStyleChange(code)
+  ElMessage.success(`已扫入款号：${code}`)
 }
 
 function reset() {
@@ -190,4 +205,9 @@ onMounted(async () => {
   flex-direction: column; align-items: center; justify-content: center; color: #98a0b3; cursor: pointer; background: #fafbff;
 }
 .upload-box:hover { border-color: var(--brand); color: var(--brand); }
+.style-picker { display: flex; gap: 8px; width: 100%; }
+.scan-btn { flex: none; }
+@media (max-width: 480px) {
+  .scan-label { display: none; }
+}
 </style>
