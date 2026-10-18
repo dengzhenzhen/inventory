@@ -12,7 +12,7 @@ from . import models  # noqa: F401  # 注册模型
 from .config import CORS_ORIGINS, STATIC_DIR
 from .database import Base, engine
 from .paths import default_spa_dist
-from .routers import auth, dicts, exports, products, purchases, sales, stats, stock, upload
+from .routers import auth, dicts, exports, products, purchases, sales, stats, stock, system, upload
 from .seed import init_db
 
 SPA_DIST = Path(os.getenv("SPA_DIST", str(default_spa_dist())))
@@ -60,6 +60,7 @@ for _router in (
     stock.router,
     stats.router,
     exports.router,
+    system.router,
 ):
     app.include_router(_router)
 

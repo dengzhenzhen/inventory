@@ -23,6 +23,9 @@ DB_PATH = Path(os.getenv("DB_PATH", str(DATA_DIR / "inventory.db")))
 DATABASE_URL = "sqlite:///" + DB_PATH.as_posix()
 SPA_DIST = Path(os.getenv("SPA_DIST", str(default_spa_dist())))
 
+HOST = str(_runtime["host"])
+PORT = int(_runtime["port"])
+
 SECRET_KEY = _runtime["secret_key"]
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES = _runtime["token_expire_minutes"]
