@@ -28,3 +28,10 @@ dist/
 
 # opencode session state
 .omo/
+
+# Private runtime configuration and local test artifacts
+backend/config.ini
+backend/.inventory-secret
+.pytest_cache/
+frontend/coverage/
+frontend/test-results/

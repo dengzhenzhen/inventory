@@ -7,7 +7,9 @@ from ..deps import current_user
 from ..schemas import DictIn
 from ..utils import abort, ok
 
-router = APIRouter(prefix="/api/dict", tags=["dict"], dependencies=[Depends(current_user)])
+router = APIRouter(
+    prefix="/api/dict", tags=["dict"], dependencies=[Depends(current_user)]
+)
 
 MODELS = {"category": models.Category, "supplier": models.Supplier, "size": models.Size}
 
@@ -40,6 +42,8 @@ def list_dict(kind: str, db: Session = Depends(get_db)):
 def create_dict(kind: str, payload: DictIn, db: Session = Depends(get_db)):
     m = _model(kind)
     name = payload.name.strip()
+    if len(name) > ({"category": 50, "supplier": 100, "size": 20}[kind]):
+        abort("名称过长", 422)
     if db.query(m).filter_by(name=name).first():
         abort("名称已存在", 409)
     obj = m(name=name)
@@ -54,11 +58,18 @@ def create_dict(kind: str, payload: DictIn, db: Session = Depends(get_db)):
 
 
 @router.put("/{kind}/{item_id}")
-def update_dict(kind: str, item_id: int, payload: DictIn, db: Session = Depends(get_db)):
+def update_dict(
+    kind: str, item_id: int, payload: DictIn, db: Session = Depends(get_db)
+):
     m = _model(kind)
     obj = db.get(m, item_id)
     if not obj:
         abort("记录不存在", 404)
+    duplicate = db.query(m).filter(m.name == payload.name, m.id != item_id).first()
+    if duplicate:
+        abort("名称已存在", 409)
+    if len(payload.name) > ({"category": 50, "supplier": 100, "size": 20}[kind]):
+        abort("名称过长", 422)
     obj.name = payload.name.strip()
     if kind == "supplier":
         obj.contact = payload.contact

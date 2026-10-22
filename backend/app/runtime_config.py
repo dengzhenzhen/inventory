@@ -3,6 +3,7 @@
 配置文件仅用于打包后的可执行程序；开发模式默认只读取环境变量与内置默认值。
 本模块导入时不生成任何文件，只有显式调用 :func:`ensure_config` 才会写入配置。
 """
+
 import configparser
 import os
 import secrets
@@ -10,9 +11,17 @@ import sys
 import tempfile
 from pathlib import Path
 
-from .paths import app_dir, default_data_dir, is_dir_writable, is_frozen
+from .paths import app_dir, default_data_dir, is_dir_writable
 
-CONFIG_PATH = Path(os.getenv("INVENTORY_CONFIG_PATH", str((app_dir() if is_dir_writable(app_dir()) else default_data_dir().parent) / "config.ini")))
+CONFIG_PATH = Path(
+    os.getenv(
+        "INVENTORY_CONFIG_PATH",
+        str(
+            (app_dir() if is_dir_writable(app_dir()) else default_data_dir().parent)
+            / "config.ini"
+        ),
+    )
+)
 
 _DEV_SECRET_KEY = "dev-secret-change-me-please-use-32-bytes-min"
 
@@ -91,8 +100,6 @@ def ensure_config() -> None:
     独占临时文件，``fsync`` 后再通过硬链接（或带存在性复查的 ``replace``）
     原子发布；并发首启时只有一个进程能成功发布。
     """
-    if not (is_frozen() or os.getenv("INVENTORY_FORCE_CONFIG", "0") == "1"):
-        return
     if CONFIG_PATH.exists():
         return
 
@@ -142,7 +149,11 @@ def _read_file_values() -> dict:
     if not parser.has_section("app"):
         _warn(f"配置文件 {CONFIG_PATH} 缺少 [app] 段（将使用默认值且不会修改文件）")
         return {}
-    return {key: parser.get("app", key) for key in _DEFAULT_RAW if parser.has_option("app", key)}
+    return {
+        key: parser.get("app", key)
+        for key in _DEFAULT_RAW
+        if parser.has_option("app", key)
+    }
 
 
 def _to_int(key: str, raw: str) -> int:
@@ -165,12 +176,37 @@ def load_runtime_config() -> dict:
 
     for key in _INT_KEYS:
         values[key] = _to_int(key, values[key])
+    for key, minimum, maximum in [
+        ("port", 1, 65535),
+        ("token_expire_minutes", 1, 43200),
+        ("max_upload_mb", 1, 100),
+    ]:
+        if not minimum <= values[key] <= maximum:
+            raise ValueError(f"配置 {key} 必须介于 {minimum} 和 {maximum}")
 
-    values["cors_origins"] = [o.strip() for o in str(values["cors_origins"]).split(",") if o.strip()]
+    if values["secret_key"] in (
+        _DEV_SECRET_KEY,
+        "change-me-in-production-use-at-least-32-characters",
+    ):
+        # Persistent replacement; never silently keep the publicly known development key.
+        secret_file = CONFIG_PATH.parent / ".inventory-secret"
+        if not secret_file.exists():
+            try:
+                with secret_file.open("x", encoding="utf-8") as fh:
+                    fh.write(secrets.token_urlsafe(48))
+                secret_file.chmod(0o600)
+            except FileExistsError:
+                pass
+        values["secret_key"] = secret_file.read_text(encoding="utf-8").strip()
+    values["cors_origins"] = [
+        o.strip() for o in str(values["cors_origins"]).split(",") if o.strip()
+    ]
     for key in ("host", "secret_key", "default_username", "default_password"):
         values[key] = str(values[key])
 
+    if len(values["secret_key"]) < 32:
+        raise ValueError("SECRET_KEY 至少需要 32 个字符")
     return values
 
 
-SEED_DEMO = os.getenv("SEED_DEMO", "0" if is_frozen() else "1").lower() in ("1", "true", "yes", "on")
+SEED_DEMO = os.getenv("SEED_DEMO", "0").lower() in ("1", "true", "yes", "on")

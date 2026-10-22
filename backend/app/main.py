@@ -10,14 +10,37 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import models  # noqa: F401  # 注册模型
 from .config import CORS_ORIGINS, STATIC_DIR
-from .database import Base, engine
+from .database import engine
 from .paths import default_spa_dist
-from .routers import auth, dicts, exports, products, purchases, sales, stats, stock, system, upload
+from .routers import (
+    documents,
+    backup,
+    auth,
+    dicts,
+    exports,
+    products,
+    purchases,
+    sales,
+    stats,
+    stock,
+    system,
+    upload,
+)
 from .seed import init_db
 
 SPA_DIST = Path(os.getenv("SPA_DIST", str(default_spa_dist())))
 
-app = FastAPI(title="服装店进销存管理系统 API", version="0.1.0")
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    _startup()
+    yield
+    engine.dispose()
+
+
+app = FastAPI(lifespan=lifespan, title="服装店进销存管理系统 API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,10 +51,68 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
 def _startup() -> None:
-    Base.metadata.create_all(bind=engine)
+    from .backups import apply_pending
+    from .upgrades import migrate
+
+    engine.dispose()
+    apply_pending()
+    migrate()
     init_db()
+
+
+# Single-worker SQLite application: serialize API requests to protect posting,
+# idempotency, backup snapshots and maintenance transitions from concurrent writers.
+import asyncio
+from sqlalchemy.exc import IntegrityError, OperationalError
+
+_api_lock = asyncio.Lock()
+
+
+@app.middleware("http")
+async def consistency_boundary(request, call_next):
+    if not request.url.path.startswith("/api/"):
+        return await call_next(request)
+    async with _api_lock:
+        from .backups import maintenance
+
+        allowed = (
+            request.url.path.startswith(("/api/auth/", "/api/backups/"))
+            or request.url.path == "/api/health"
+        )
+        if maintenance() and not allowed:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "code": 503,
+                    "message": "系统处于恢复维护模式，请到设置查看状态或重启程序",
+                    "data": None,
+                },
+            )
+        return await call_next(request)
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error(_request, exc):
+    return JSONResponse(
+        status_code=409,
+        content={
+            "code": 409,
+            "message": "名称重复或数据仍被引用，请刷新后重试",
+            "data": None,
+        },
+    )
+
+
+@app.exception_handler(OperationalError)
+async def database_error(_request, exc):
+    import logging
+
+    logging.getLogger(__name__).exception("Database operation failed", exc_info=exc)
+    return JSONResponse(
+        status_code=503,
+        content={"code": 503, "message": "数据库暂不可用，请稍后重试", "data": None},
+    )
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -46,11 +127,20 @@ async def _http_exception_handler(_request, exc):
 async def _validation_exception_handler(_request, exc):
     return JSONResponse(
         status_code=422,
-        content={"code": 422, "message": "参数校验失败", "data": exc.errors()},
+        content={
+            "code": 422,
+            "message": "参数校验失败",
+            "data": [
+                {"loc": e.get("loc"), "message": e.get("msg"), "type": e.get("type")}
+                for e in exc.errors()
+            ],
+        },
     )
 
 
 for _router in (
+    documents.router,
+    backup.router,
     auth.router,
     dicts.router,
     products.router,
@@ -83,7 +173,9 @@ if _spa_index.is_file():
     if _spa_assets.is_dir():
         app.mount("/assets", StaticFiles(directory=str(_spa_assets)), name="assets")
     else:
-        print(f"[WARN] SPA assets directory not found at {_spa_assets}; /assets will not be served.")
+        print(
+            f"[WARN] SPA assets directory not found at {_spa_assets}; /assets will not be served."
+        )
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def _spa_fallback(full_path: str):

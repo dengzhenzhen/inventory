@@ -1,4 +1,5 @@
 """初始化数据库：默认账号、字典，以及可选的演示数据。"""
+
 from . import models
 from .config import DEFAULT_PASSWORD, DEFAULT_USERNAME
 from .database import SessionLocal
@@ -10,7 +11,12 @@ def init_db() -> None:
     db = SessionLocal()
     try:
         if not db.query(models.User).first():
-            db.add(models.User(username=DEFAULT_USERNAME, password_hash=hash_password(DEFAULT_PASSWORD)))
+            db.add(
+                models.User(
+                    username=DEFAULT_USERNAME,
+                    password_hash=hash_password(DEFAULT_PASSWORD),
+                )
+            )
         if not db.query(models.Category).first():
             for i, n in enumerate(["上衣", "裤装", "裙装", "外套", "配饰"]):
                 db.add(models.Category(name=n, sort_order=i))
@@ -18,7 +24,9 @@ def init_db() -> None:
             for i, n in enumerate(["S", "M", "L", "XL", "均码"]):
                 db.add(models.Size(name=n, sort_order=i))
         if not db.query(models.Supplier).first():
-            for n in ["杭州优品服饰", "广州锦程制衣", "义乌恒达针织"]:
+            for n in (
+                ["杭州优品服饰", "广州锦程制衣", "义乌恒达针织"] if SEED_DEMO else []
+            ):
                 db.add(models.Supplier(name=n))
         db.commit()
         if SEED_DEMO:
@@ -30,7 +38,7 @@ def init_db() -> None:
 def _seed_demo(db) -> None:
     if db.query(models.Product).first():
         return
-    from .crud import get_or_create_product, get_or_create_size
+    from .crud import get_or_create_product
 
     demo_products = [
         ("HT2024-001", "基础圆领T恤", "上衣", "杭州优品服饰", 129),
@@ -45,6 +53,7 @@ def _seed_demo(db) -> None:
         p, _ = get_or_create_product(db, sc, cat, sup)
         p.name = name
         p.retail_price = price
+        p.retail_cents = price * 100
 
     purchases = [
         ("HT2024-001", "S", 10, 45, "2026-10-02", "秋季首单"),
@@ -56,13 +65,6 @@ def _seed_demo(db) -> None:
         ("KD-8822", "M", 14, 70, "2026-10-13", ""),
         ("KD-8823", "S", 7, 82, "2026-10-15", ""),
     ]
-    for sc, size, qty, cost, d, remark in purchases:
-        product = db.query(models.Product).filter_by(style_code=sc).first()
-        sz = get_or_create_size(db, size)
-        db.add(models.Purchase(product_id=product.id, style_code=sc, size_id=sz.id, size_text=sz.name,
-                               quantity=qty, cost_price=cost, purchase_date=d,
-                               supplier_id=product.supplier_id, remark=remark))
-
     sales = [
         ("HT2024-001", "M", 3, 129, "2026-10-06", "老顾客"),
         ("HT2024-002", "L", 2, 259, "2026-10-09", ""),
@@ -71,9 +73,20 @@ def _seed_demo(db) -> None:
         ("KD-8822", "M", 5, 189, "2026-10-14", ""),
         ("HT2024-004", "均码", 2, 299, "2026-10-16", ""),
     ]
-    for sc, size, qty, price, d, remark in sales:
-        product = db.query(models.Product).filter_by(style_code=sc).first()
-        sz = get_or_create_size(db, size)
-        db.add(models.Sale(product_id=product.id, style_code=sc, size_id=sz.id, size_text=sz.name,
-                           quantity=qty, unit_price=price, sale_date=d, remark=remark))
+    from .document_schemas import DocumentIn, LineIn
+    from .ledger import post
+
+    db.flush()
+    for kind, rows in [("purchase", purchases), ("sale", sales)]:
+        for sc, size, qty, price, d, remark in rows:
+            post(
+                db,
+                DocumentIn(
+                    kind=kind,
+                    date=d,
+                    remark=remark,
+                    lines=[LineIn(style_code=sc, size=size, quantity=qty, price=price)],
+                ),
+                "demo",
+            )
     db.commit()

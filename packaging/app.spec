@@ -59,11 +59,15 @@ hiddenimports = [
     "pydantic",
     "pydantic_core",
     "multipart",
+    "alembic",
+    "alembic.runtime.migration",
+    "alembic.ddl.sqlite",
+    "mako",
     "h11",
     "greenlet",
 ]
 
-datas = [(str(SPA), "frontend/dist")]
+datas = [(str(SPA), "frontend/dist"), (str(BACKEND / "migrations"), "migrations")]
 
 # FastAPI/Starlette/uvicorn/pydantic expose entry-point metadata that is read
 # at runtime (e.g. version lookups); copy the dist-info folders into the bundle.

@@ -1,4 +1,5 @@
 """数据模型（对应 PRD 第 5 节表结构）。"""
+
 from datetime import datetime
 
 from sqlalchemy import (
@@ -46,7 +47,8 @@ class Product(Base):
     name = Column(String(120))
     category_id = Column(Integer, ForeignKey("category.id"))
     supplier_id = Column(Integer, ForeignKey("supplier.id"))
-    retail_price = Column(Float, default=0)
+    retail_price = Column(Float, default=0)  # legacy compatibility only
+    retail_cents = Column(Integer, nullable=False, default=0)
     main_image = Column(String(255))
     remark = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
@@ -107,4 +109,5 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
+    must_change_password = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime, default=datetime.now)

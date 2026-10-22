@@ -1,9 +1,10 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from ..money import cents
 from .. import models
 from ..crud import get_or_create_category, get_or_create_supplier, product_dict
 from ..database import get_db
@@ -11,7 +12,9 @@ from ..deps import current_user
 from ..schemas import ProductIn, ProductUpdate
 from ..utils import abort, ok
 
-router = APIRouter(prefix="/api/products", tags=["products"], dependencies=[Depends(current_user)])
+router = APIRouter(
+    prefix="/api/products", tags=["products"], dependencies=[Depends(current_user)]
+)
 
 
 def _resolve_category(db: Session, cid: Optional[int], cname: Optional[str]):
@@ -39,20 +42,32 @@ def list_products(
     keyword: Optional[str] = None,
     category_id: Optional[int] = None,
     supplier_id: Optional[int] = None,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
     q = db.query(models.Product)
     if keyword:
         like = f"%{keyword}%"
-        q = q.filter(or_(models.Product.style_code.like(like), models.Product.name.like(like)))
+        q = q.filter(
+            or_(models.Product.style_code.like(like), models.Product.name.like(like))
+        )
     if category_id:
         q = q.filter(models.Product.category_id == category_id)
     if supplier_id:
         q = q.filter(models.Product.supplier_id == supplier_id)
     total = q.count()
-    items = q.order_by(models.Product.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    from sqlalchemy.orm import joinedload
+
+    q = q.options(
+        joinedload(models.Product.category), joinedload(models.Product.supplier)
+    )
+    items = (
+        q.order_by(models.Product.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
     return ok({"items": [product_dict(p) for p in items], "total": total})
 
 
@@ -74,7 +89,11 @@ def get_product(pid: int, db: Session = Depends(get_db)):
 
 @router.post("")
 def create_product(payload: ProductIn, db: Session = Depends(get_db)):
-    if db.query(models.Product).filter_by(style_code=payload.style_code.strip()).first():
+    if (
+        db.query(models.Product)
+        .filter_by(style_code=payload.style_code.strip())
+        .first()
+    ):
         abort("款号已存在", 409)
     p = models.Product(
         style_code=payload.style_code.strip(),
@@ -82,6 +101,7 @@ def create_product(payload: ProductIn, db: Session = Depends(get_db)):
         category_id=_resolve_category(db, payload.category_id, payload.category_name),
         supplier_id=_resolve_supplier(db, payload.supplier_id, payload.supplier_name),
         retail_price=payload.retail_price or 0,
+        retail_cents=cents(payload.retail_price),
         main_image=payload.main_image,
         remark=payload.remark,
     )
@@ -100,7 +120,10 @@ def update_product(pid: int, payload: ProductUpdate, db: Session = Depends(get_d
     if data.get("style_code"):
         dup = (
             db.query(models.Product)
-            .filter(models.Product.style_code == data["style_code"].strip(), models.Product.id != pid)
+            .filter(
+                models.Product.style_code == data["style_code"].strip(),
+                models.Product.id != pid,
+            )
             .first()
         )
         if dup:
@@ -109,11 +132,16 @@ def update_product(pid: int, payload: ProductUpdate, db: Session = Depends(get_d
     if "name" in data:
         p.name = data["name"]
     if "category_id" in data or "category_name" in data:
-        p.category_id = _resolve_category(db, data.get("category_id"), data.get("category_name"))
+        p.category_id = _resolve_category(
+            db, data.get("category_id"), data.get("category_name")
+        )
     if "supplier_id" in data or "supplier_name" in data:
-        p.supplier_id = _resolve_supplier(db, data.get("supplier_id"), data.get("supplier_name"))
+        p.supplier_id = _resolve_supplier(
+            db, data.get("supplier_id"), data.get("supplier_name")
+        )
     if "retail_price" in data:
         p.retail_price = data["retail_price"]
+        p.retail_cents = cents(data["retail_price"])
     if "main_image" in data:
         p.main_image = data["main_image"]
     if "remark" in data:
@@ -130,7 +158,13 @@ def delete_product(pid: int, db: Session = Depends(get_db)):
         abort("商品不存在", 404)
     has_purchase = db.query(models.Purchase).filter_by(product_id=pid).first()
     has_sale = db.query(models.Sale).filter_by(product_id=pid).first()
-    if has_purchase or has_sale:
+    from ..ledger_models import DocumentLine
+
+    if (
+        has_purchase
+        or has_sale
+        or db.query(DocumentLine).filter_by(product_id=pid).first()
+    ):
         abort("该款式已有进销记录，不能删除")
     db.delete(p)
     db.commit()

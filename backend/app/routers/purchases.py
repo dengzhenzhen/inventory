@@ -1,125 +1,143 @@
+"""Legacy single-line adapters for immutable v2 documents."""
+
 from datetime import date
-from typing import Optional
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.orm import Session
-
-from .. import models
-from ..crud import get_or_create_product, get_or_create_size, get_or_create_supplier, purchase_dict
 from ..database import get_db
 from ..deps import current_user
-from ..schemas import PurchaseBatchIn, PurchaseIn, PurchaseUpdate
-from ..utils import abort, ok
+from ..schemas import PurchaseIn, PurchaseBatchIn
+from ..document_schemas import DocumentIn, LineIn
+from ..ledger import post, lines_query, line_dict
+from ..utils import ok, abort
 
-router = APIRouter(prefix="/api/purchases", tags=["purchases"], dependencies=[Depends(current_user)])
+router = APIRouter(
+    prefix="/api/purchases", tags=["purchases"], dependencies=[Depends(current_user)]
+)
 
 
-def _create_one(db: Session, payload: PurchaseIn) -> models.Purchase:
-    today = date.today().isoformat()
-    product, _ = get_or_create_product(db, payload.style_code, payload.category, payload.supplier)
-    if payload.main_image and not product.main_image:
-        product.main_image = payload.main_image
-    size = get_or_create_size(db, payload.size)
-    supplier = get_or_create_supplier(db, payload.supplier) if payload.supplier else None
-    rec = models.Purchase(
-        product_id=product.id,
-        style_code=product.style_code,
-        size_id=size.id if size else None,
-        size_text=size.name if size else None,
-        quantity=payload.quantity,
-        cost_price=payload.cost_price,
-        purchase_date=payload.purchase_date or today,
-        supplier_id=supplier.id if supplier else product.supplier_id,
-        remark=payload.remark,
+def adapt(x):
+    return LineIn(
+        style_code=x.style_code,
+        size=x.size or "未指定",
+        quantity=x.quantity,
+        price=x.cost_price,
+        category=x.category,
+        supplier=x.supplier,
+        main_image=x.main_image,
     )
-    db.add(rec)
-    db.flush()
-    return rec
 
 
 @router.get("")
-def list_purchases(
-    style_code: Optional[str] = None,
-    category_id: Optional[int] = None,
-    supplier_id: Optional[int] = None,
-    size_id: Optional[int] = None,
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
-    page: int = 1,
-    page_size: int = 20,
+def listing(
+    style_code: str | None = None,
+    category_id: int | None = None,
+    supplier_id: int | None = None,
+    size_id: int | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    q = db.query(models.Purchase).join(models.Product, models.Purchase.product_id == models.Product.id)
-    if style_code:
-        q = q.filter(models.Purchase.style_code.like(f"%{style_code}%"))
-    if category_id:
-        q = q.filter(models.Product.category_id == category_id)
-    if supplier_id:
-        q = q.filter(models.Purchase.supplier_id == supplier_id)
-    if size_id:
-        q = q.filter(models.Purchase.size_id == size_id)
-    if date_from:
-        q = q.filter(models.Purchase.purchase_date >= date_from)
-    if date_to:
-        q = q.filter(models.Purchase.purchase_date <= date_to)
-    total = q.count()
-    items = (
-        q.order_by(models.Purchase.purchase_date.desc(), models.Purchase.id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
+    q = lines_query(
+        db,
+        "purchase",
+        style_code,
+        category_id,
+        supplier_id,
+        size_id,
+        str(date_from) if date_from else None,
+        str(date_to) if date_to else None,
     )
-    return ok({"items": [purchase_dict(x) for x in items], "total": total})
+    return ok(
+        {
+            "items": [
+                line_dict(x) for x in q.offset((page - 1) * page_size).limit(page_size)
+            ],
+            "total": q.count(),
+        }
+    )
 
 
 @router.post("")
-def create_purchase(payload: PurchaseIn, db: Session = Depends(get_db)):
-    rec = _create_one(db, payload)
+def create(
+    payload: PurchaseIn,
+    idempotency_key: str | None = Header(None),
+    db: Session = Depends(get_db),
+    user: str = Depends(current_user),
+):
+    doc = post(
+        db,
+        DocumentIn(
+            kind="purchase",
+            date=payload.purchase_date or date.today().isoformat(),
+            remark=payload.remark or "",
+            lines=[adapt(payload)],
+        ),
+        user,
+        idempotency_key,
+    )
     db.commit()
-    db.refresh(rec)
-    return ok(purchase_dict(rec), "进货已保存")
+    result = line_dict(doc.lines[0])
+    from ..ledger import stock
+
+    line = doc.lines[0]
+    result["warning"] = (
+        "已产生负库存，请核对或补货"
+        if stock(db, line.product_id, line.size_id) < 0
+        else None
+    )
+    return ok(result)
+
+
+@router.put("/{record_id}")
+@router.delete("/{record_id}")
+def immutable(record_id: int):
+    abort("正式单据不能修改或删除，请在单据中心作废并复制重开", 409)
 
 
 @router.post("/batch")
-def create_batch(payload: PurchaseBatchIn, db: Session = Depends(get_db)):
-    if not payload.items:
-        abort("没有可保存的数据")
-    created = [_create_one(db, item) for item in payload.items]
+def batch(
+    payload: PurchaseBatchIn,
+    idempotency_key: str | None = Header(None),
+    db: Session = Depends(get_db),
+    user: str = Depends(current_user),
+):
+    # The adapter preserves each historical row's date while making the complete request atomic.
+    import hashlib, json
+    from ..ledger_models import SystemState
+
+    digest = hashlib.sha256(payload.model_dump_json().encode()).hexdigest()
+    key = (
+        "batch:" + hashlib.sha256(idempotency_key.encode()).hexdigest()
+        if idempotency_key
+        else None
+    )
+    old = db.get(SystemState, key) if key else None
+    if old:
+        saved = json.loads(old.value)
+        if saved["hash"] != digest:
+            abort("幂等键已用于其他内容", 409)
+        return ok(saved["result"])
+    docs = []
+    for i, x in enumerate(payload.items):
+        docs.append(
+            post(
+                db,
+                DocumentIn(
+                    kind="purchase",
+                    date=x.purchase_date or date.today().isoformat(),
+                    remark=x.remark or "",
+                    lines=[adapt(x)],
+                ),
+                user,
+                None,
+            )
+        )
+    result = {"created": len(docs), "document_ids": [d.id for d in docs]}
+    if key:
+        db.add(
+            SystemState(key=key, value=json.dumps({"hash": digest, "result": result}))
+        )
     db.commit()
-    return ok({"created": len(created)}, f"已保存 {len(created)} 条进货")
-
-
-@router.put("/{pid}")
-def update_purchase(pid: int, payload: PurchaseUpdate, db: Session = Depends(get_db)):
-    rec = db.get(models.Purchase, pid)
-    if not rec:
-        abort("进货记录不存在", 404)
-    data = payload.model_dump(exclude_unset=True)
-    if "size" in data:
-        size = get_or_create_size(db, data["size"])
-        rec.size_id = size.id if size else None
-        rec.size_text = size.name if size else None
-    if data.get("quantity") is not None:
-        rec.quantity = data["quantity"]
-    if data.get("cost_price") is not None:
-        rec.cost_price = data["cost_price"]
-    if data.get("purchase_date"):
-        rec.purchase_date = data["purchase_date"]
-    if "supplier" in data:
-        supplier = get_or_create_supplier(db, data["supplier"]) if data["supplier"] else None
-        rec.supplier_id = supplier.id if supplier else None
-    if "remark" in data:
-        rec.remark = data["remark"]
-    db.commit()
-    db.refresh(rec)
-    return ok(purchase_dict(rec), "已更新")
-
-
-@router.delete("/{pid}")
-def delete_purchase(pid: int, db: Session = Depends(get_db)):
-    rec = db.get(models.Purchase, pid)
-    if not rec:
-        abort("进货记录不存在", 404)
-    db.delete(rec)
-    db.commit()
-    return ok(None, "已删除")
+    return ok(result)

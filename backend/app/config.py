@@ -1,16 +1,15 @@
 """应用配置：冻结感知路径 + 运行期配置（环境变量优先）。"""
+
 import os
 from pathlib import Path
 
 from .paths import (
     app_dir,
-    bundle_dir,
     default_data_dir,
     default_spa_dist,
     default_static_dir,
-    resource_path,
 )
-from .runtime_config import SEED_DEMO, ensure_config, load_runtime_config
+from .runtime_config import ensure_config, load_runtime_config
 
 ensure_config()
 _runtime = load_runtime_config()

@@ -1,4 +1,5 @@
 """领域辅助：字典/商品自动创建、序列化、库存聚合。"""
+
 from typing import Optional
 
 from sqlalchemy import func
@@ -44,8 +45,12 @@ def get_or_create_size(db: Session, name: Optional[str]):
     return obj
 
 
-def get_or_create_product(db: Session, style_code: str, category_name: Optional[str] = None,
-                          supplier_name: Optional[str] = None):
+def get_or_create_product(
+    db: Session,
+    style_code: str,
+    category_name: Optional[str] = None,
+    supplier_name: Optional[str] = None,
+):
     """按款号取/建商品档案；返回 (product, created)。"""
     style_code = (style_code or "").strip()
     product = db.query(models.Product).filter_by(style_code=style_code).first()
@@ -81,7 +86,7 @@ def product_dict(p: models.Product) -> dict:
         "category_name": p.category.name if p.category else None,
         "supplier_id": p.supplier_id,
         "supplier_name": p.supplier.name if p.supplier else None,
-        "retail_price": p.retail_price or 0,
+        "retail_price": p.retail_cents / 100,
         "main_image": p.main_image,
         "remark": p.remark,
         "created_at": p.created_at.isoformat() if p.created_at else None,
@@ -94,9 +99,17 @@ def purchase_dict(r: models.Purchase) -> dict:
         "product_id": r.product_id,
         "style_code": r.style_code,
         "category_id": r.product.category_id if r.product else None,
-        "category_name": r.product.category.name if (r.product and r.product.category) else None,
+        "category_name": r.product.category.name
+        if (r.product and r.product.category)
+        else None,
         "supplier_id": r.supplier_id,
-        "supplier_name": (r.supplier.name if r.supplier else (r.product.supplier.name if (r.product and r.product.supplier) else None)),
+        "supplier_name": (
+            r.supplier.name
+            if r.supplier
+            else (
+                r.product.supplier.name if (r.product and r.product.supplier) else None
+            )
+        ),
         "size_id": r.size_id,
         "size_text": r.size_text,
         "quantity": r.quantity,
@@ -113,7 +126,9 @@ def sale_dict(r: models.Sale) -> dict:
         "product_id": r.product_id,
         "style_code": r.style_code,
         "category_id": r.product.category_id if r.product else None,
-        "category_name": r.product.category.name if (r.product and r.product.category) else None,
+        "category_name": r.product.category.name
+        if (r.product and r.product.category)
+        else None,
         "size_id": r.size_id,
         "size_text": r.size_text,
         "quantity": r.quantity,
@@ -124,60 +139,83 @@ def sale_dict(r: models.Sale) -> dict:
     }
 
 
-# ---------- 库存聚合 ----------
-def _aggregate(db: Session, model) -> dict:
-    rows = (
-        db.query(model.style_code, model.size_text, func.sum(model.quantity))
-        .group_by(model.style_code, model.size_text)
-        .all()
+# ---------- stable SKU ledger aggregation ----------
+def current_stock(db, style_code, size_text):
+    from .ledger import stock
+
+    p = db.query(models.Product).filter_by(style_code=style_code.strip()).first()
+    z = db.query(models.Size).filter_by(name=size_text.strip() or "未指定").first()
+    return stock(db, p.id, z.id) if p and z else 0
+
+
+def stock_query(db, keyword=None, category_id=None, only_negative=False):
+    from .ledger_models import Movement
+    from sqlalchemy import case, or_
+
+    agg = (
+        db.query(
+            Movement.product_id.label("pid"),
+            Movement.size_id.label("sid"),
+            func.sum(Movement.quantity).label("stock"),
+            func.max(Movement.id).label("version"),
+            func.sum(case((Movement.quantity > 0, Movement.quantity), else_=0)).label(
+                "incoming"
+            ),
+            func.sum(case((Movement.quantity < 0, -Movement.quantity), else_=0)).label(
+                "outgoing"
+            ),
+        )
+        .group_by(Movement.product_id, Movement.size_id)
+        .subquery()
     )
-    return {(r[0], r[1] or ""): int(r[2] or 0) for r in rows}
-
-
-def current_stock(db: Session, style_code: str, size_text: str) -> int:
-    purchased = (
-        db.query(func.coalesce(func.sum(models.Purchase.quantity), 0))
-        .filter(models.Purchase.style_code == style_code, models.Purchase.size_text == size_text)
-        .scalar()
+    q = (
+        db.query(
+            models.Product,
+            models.Size,
+            agg.c.stock,
+            agg.c.version,
+            agg.c.incoming,
+            agg.c.outgoing,
+        )
+        .join(agg, models.Product.id == agg.c.pid)
+        .join(models.Size, models.Size.id == agg.c.sid)
     )
-    sold = (
-        db.query(func.coalesce(func.sum(models.Sale.quantity), 0))
-        .filter(models.Sale.style_code == style_code, models.Sale.size_text == size_text)
-        .scalar()
-    )
-    return int(purchased or 0) - int(sold or 0)
+    if keyword:
+        q = q.filter(
+            or_(
+                models.Product.style_code.contains(keyword, autoescape=True),
+                models.Product.name.contains(keyword, autoescape=True),
+            )
+        )
+    if category_id:
+        q = q.filter(models.Product.category_id == category_id)
+    if only_negative:
+        q = q.filter(agg.c.stock < 0)
+    from sqlalchemy.orm import joinedload
+
+    return q.options(
+        joinedload(models.Product.category), joinedload(models.Product.supplier)
+    ).order_by(models.Product.style_code, models.Size.sort_order, models.Size.id)
 
 
-def stock_rows(db: Session, keyword: Optional[str] = None, category_id: Optional[int] = None,
-               only_negative: bool = False) -> list:
-    purchased = _aggregate(db, models.Purchase)
-    sold = _aggregate(db, models.Sale)
-    keys = set(purchased) | set(sold)
-
-    products = {p.style_code: p for p in db.query(models.Product).all()}
-    size_ids = {s.name: s.id for s in db.query(models.Size).all()}
-
-    result = []
-    for style_code, size_text in keys:
-        p = products.get(style_code)
-        if keyword and keyword not in style_code and not (p and p.name and keyword in p.name):
-            continue
-        if category_id and (not p or p.category_id != category_id):
-            continue
-        purchased_qty = purchased.get((style_code, size_text), 0)
-        sold_qty = sold.get((style_code, size_text), 0)
-        stock = purchased_qty - sold_qty
-        if only_negative and stock >= 0:
-            continue
-        result.append({
-            "style_code": style_code,
-            "size_id": size_ids.get(size_text),
-            "size_text": size_text,
-            "product": product_dict(p) if p else {"style_code": style_code, "name": "(未建档)"},
-            "category_name": p.category.name if (p and p.category) else None,
-            "purchased": purchased_qty,
-            "sold": sold_qty,
-            "stock": stock,
-        })
-    result.sort(key=lambda r: (r["style_code"], r["size_text"]))
-    return result
+def stock_rows(
+    db, keyword=None, category_id=None, only_negative=False, page=None, page_size=20
+):
+    q = stock_query(db, keyword, category_id, only_negative)
+    if page:
+        q = q.offset((page - 1) * page_size).limit(page_size)
+    return [
+        {
+            "product_id": p.id,
+            "style_code": p.style_code,
+            "size_id": z.id,
+            "size_text": z.name,
+            "product": product_dict(p),
+            "category_name": p.category.name if p.category else None,
+            "purchased": int(incoming),
+            "sold": int(outgoing),
+            "stock": int(qty),
+            "stock_version": int(ver),
+        }
+        for p, z, qty, ver, incoming, outgoing in q.all()
+    ]
