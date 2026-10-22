@@ -14,7 +14,7 @@ PyInstaller 不是交叉编译工具。它会把**当前系统**的 Python 运�
 |---|---|---|
 | 操作系统 | Windows 10 / 11，64 位 | 不支持 32 位 Windows |
 | Python | 3.10，64 位 | 请按此版本准备，其他版本未做验证 |
-| Node.js | 18 或更高 | CI 使用 Node 20 |
+| Node.js | 22.12 或更高 | CI 使用 Node 22 |
 | npm | 随 Node.js 安装 | 用于构建前端 |
 | Git | 任意较新版本 | 用于获取代码 |
 | PowerShell | 5.1 或更高 | 本指南的命令均在此环境测试设计 |
@@ -119,7 +119,7 @@ Remove-Item Env:\INVENTORY_NO_BROWSER
 
 ## 4. 使用 GitHub Actions 构建（推荐）
 
-仓库包含 `.github/workflows/build-windows.yml`。它在 `windows-latest` 上完成前端构建、依赖安装和 PyInstaller 打包，不依赖本地环境。CI 不再自动执行冒烟测试，产物需要在 Windows 上手动验证。
+仓库包含 `.github/workflows/build-windows.yml`。它在 `windows-latest` 上完成前端构建、依赖安装和 PyInstaller 打包，不依赖本地环境。CI 运行前后端回归，并启动实际 EXE 验证迁移、登录和页面；手机摄像头、系统防火墙及交互仍需真机验收。
 
 ### 4.1 触发方式
 

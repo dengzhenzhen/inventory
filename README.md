@@ -2,6 +2,10 @@
 
 面向小型实体服装店的轻量级 **进货 / 销售 / 库存** 管理系统。覆盖「进货录入 → 库存 → 销售出库 → 统计报表」闭环，可自托管、零运维。
 
+## v2.0.0
+
+支持多行不可变单据、原单退货、盘点调整、审计和幂等提交；库存按商品尺码 ID 聚合，成本采用移动加权快照。升级、恢复及成本规则请先阅读 [v2.0.0 升级说明](docs/RELEASE-v2.0.0.md)。
+
 ## 功能
 
 - **商品档案**：款号（唯一）、品名、分类、厂家、零售价、主图
@@ -48,7 +52,7 @@
 
 ### 依赖
 - Python 3.10+ 与 [uv](https://github.com/astral-sh/uv)
-- Node.js 18+ 与 npm
+- Node.js 22.12+ 与 npm
 
 ### 一键启动
 ```bash
@@ -75,7 +79,7 @@ npm run dev
 ```
 
 ### 默认账号
-`admin / admin123`（可用环境变量 `DEFAULT_USERNAME` / `DEFAULT_PASSWORD` 修改）
+`admin / admin123`（首次登录必须修改密码，至少 8 位；可用环境变量 `DEFAULT_USERNAME` / `DEFAULT_PASSWORD` 修改初始值）。默认不生成演示商品，体验时显式设置 `SEED_DEMO=1`。
 
 ## 配置
 
@@ -95,20 +99,22 @@ npm run dev
 | 上传 | `POST /upload/image` |
 | 导出 | `GET /export/{purchases\|sales\|stock}.xlsx` |
 
+v2 新增 `/documents`（单据、作废、成本预览重算、审计）和 `/backups`（完整备份、校验恢复、维护状态）。分页上限 100；`/stock` 返回 `items/total`。旧单据 PUT/DELETE 返回 409，改为作废重开。
+
 除登录外，所有接口需请求头 `Authorization: Bearer <token>`。
 
 ## 数据与备份
 
 - 数据库：`backend/data/inventory.db`（SQLite）
 - 图片：`backend/static/images/`
-- 备份：将以上两者复制到外部存储即可
+- 备份：设置中下载数据库及图片完整备份；运行中不要仅复制 `.db`。网页恢复需校验、确认进入维护模式并重启；停机时可复制整个数据和图片目录。
 
 ## 说明与限制
 
-- 毛利为**估算**（加权平均成本，未启用批次）
+- 毛利按商品尺码移动加权快照计算，明确提示负库存暂估、未知成本和待重算记录。
 - 允许负库存（强提示，不拦截）
-- 本期不含：退货、分类多级、Excel 导入（P1）
-- 建表使用 SQLAlchemy `create_all`，暂未接入 Alembic 迁移
+- 支持原单采购及销售退货、盘点调整；不含分类多级、Excel 历史导入和供应商结算。
+- 数据库通过 Alembic 管理版本，旧库迁移前自动备份，失败不开放服务。
 
 ## Windows 打包与使用
 
