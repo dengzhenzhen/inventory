@@ -18,6 +18,8 @@
         </div>
       </el-header>
       <el-main class="main">
+        <el-alert v-if="session.demo" title="演示模式：当前数据仅供体验" type="warning" :closable="false" />
+        <el-alert v-if="session.notice" :title="session.notice" type="info" show-icon @close="session.notice = ''" />
         <router-view />
       </el-main>
     </el-container>
@@ -43,6 +45,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import NavMenu from './NavMenu.vue'
 import LanAccessButton from '../components/LanAccessButton.vue'
+import { authApi } from '../api'
+import { session, saveSession } from '../session'
 
 const route = useRoute()
 const router = useRouter()
@@ -57,7 +61,7 @@ function onMediaChange(e) {
   if (!e.matches) drawerOpen.value = false
 }
 
-onMounted(() => mql?.addEventListener('change', onMediaChange))
+onMounted(async () => { mql?.addEventListener('change', onMediaChange); try { saveSession(await authApi.me()); if (session.mustChange) router.replace('/settings') } catch (_) {} })
 onUnmounted(() => mql?.removeEventListener('change', onMediaChange))
 
 watch(() => route.path, () => {

@@ -1,32 +1,16 @@
 import { defineStore } from 'pinia'
 import { authApi } from '../api'
-
+import { session, clearSession, saveSession } from '../session'
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    token: localStorage.getItem('token') || '',
-    username: localStorage.getItem('username') || '',
-  }),
+  state: () => ({ session }),
   getters: {
-    isLoggedIn: (s) => !!s.token,
+    token: () => session.token,
+    username: () => session.username,
+    isLoggedIn: () => !!session.token,
+    mustChange: () => session.mustChange,
   },
   actions: {
-    async login(username, password) {
-      const data = await authApi.login({ username, password })
-      this.token = data.access_token
-      this.username = data.username
-      localStorage.setItem('token', this.token)
-      localStorage.setItem('username', this.username)
-    },
-    async logout() {
-      try {
-        await authApi.logout()
-      } catch (e) {
-        /* ignore */
-      }
-      this.token = ''
-      this.username = ''
-      localStorage.removeItem('token')
-      localStorage.removeItem('username')
-    },
+    async login(username, password) { saveSession(await authApi.login({ username, password })) },
+    async logout() { try { await authApi.logout() } finally { clearSession() } },
   },
 })

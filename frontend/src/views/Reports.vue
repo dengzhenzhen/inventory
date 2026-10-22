@@ -4,12 +4,13 @@
       <div class="filter-bar">
         <el-date-picker v-model="range" type="daterange" value-format="YYYY-MM-DD" start-placeholder="开始" end-placeholder="结束" />
         <el-button type="primary" @click="load">生成报表</el-button>
-        <span class="muted" style="margin-left: auto">* 因未启用批次，毛利按加权平均成本估算</span>
+        <span class="muted" style="margin-left: auto">按商品尺码移动加权成本计算，退货计入净额</span>
       </div>
+      <el-alert v-if="summary.unknown_cost_lines || summary.provisional_cost_lines || summary.dirty_cost_lines" :title="`待核算 ${summary.unknown_cost_lines} 条，暂估 ${summary.provisional_cost_lines} 条，待重算 ${summary.dirty_cost_lines} 条；请到单据中心预览重算`" type="warning" :closable="false" />
       <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr)">
         <div class="stat-card"><div class="label">进货金额</div><div class="value">￥{{ fmtMoney(summary.purchase_amount) }}</div></div>
         <div class="stat-card"><div class="label">销售金额</div><div class="value">￥{{ fmtMoney(summary.sale_amount) }}</div></div>
-        <div class="stat-card"><div class="label">毛利（估算）</div><div class="value" style="color: #34c38f">￥{{ fmtMoney(summary.profit) }}</div></div>
+        <div class="stat-card"><div class="label">毛利</div><div class="value" style="color: #34c38f">￥{{ summary.profit===null?'待核算':fmtMoney(summary.profit) }}</div></div>
       </div>
     </div>
 

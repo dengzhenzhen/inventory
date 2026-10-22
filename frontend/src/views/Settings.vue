@@ -1,5 +1,6 @@
 <template>
   <div class="page-card">
+    <el-alert v-if="session.mustChange" title="请先修改初始密码（至少 8 位），完成后重新登录。" type="warning" :closable="false" />
     <el-tabs v-model="tab">
       <el-tab-pane label="字典管理" name="dict">
         <el-row :gutter="20">
@@ -27,23 +28,33 @@
 
       <el-tab-pane label="账号设置" name="account">
         <el-form label-width="100px" style="max-width: 420px">
-          <el-form-item label="账号"><el-input v-model="auth.username" disabled /></el-form-item>
+          <el-form-item label="账号"><el-input :model-value="auth.username" disabled /></el-form-item>
           <el-form-item label="原密码"><el-input v-model="pwd.old_password" type="password" show-password /></el-form-item>
           <el-form-item label="新密码"><el-input v-model="pwd.new_password" type="password" show-password /></el-form-item>
           <el-form-item><el-button type="primary" @click="changePwd">保存</el-button></el-form-item>
         </el-form>
       </el-tab-pane>
 
-      <el-tab-pane label="数据备份 / 导入导出" name="backup">
+      <el-tab-pane label="备份 / 恢复 / 导出" name="backup">
         <el-space wrap>
-          <el-button type="primary" @click="exportFile('/export/purchases.xlsx', 'purchases.xlsx')">导出进货明细</el-button>
-          <el-button @click="exportFile('/export/sales.xlsx', 'sales.xlsx')">导出销售明细</el-button>
-          <el-button @click="exportFile('/export/stock.xlsx', 'stock.xlsx')">导出库存</el-button>
-          <el-button type="success" plain @click="importTip">导入历史 Excel</el-button>
+          <el-button type="primary" @click="exportFile('/backups', 'inventory-backup.zip')">下载完整备份</el-button>
+          <el-button @click="backupInput.click()">上传并校验备份</el-button>
+          <el-button @click="loadBackupStatus">刷新维护状态</el-button>
+          <input ref="backupInput" type="file" accept=".zip" style="display:none" @change="validateBackup" />
         </el-space>
-        <div class="muted" style="margin-top: 12px">
-          数据库文件位于后端 <code>backend/data/inventory.db</code>（SQLite）。建议定期将 <code>data/</code> 与 <code>static/images/</code> 一并复制到外部存储备份。
+        <el-alert v-if="backupStatus.maintenance" :title="backupStatus.failure || '已进入维护模式，请关闭并重启程序完成恢复；或取消任务。'" type="warning" :closable="false" />
+        <el-button v-if="backupStatus.maintenance" @click="cancelRestore">取消维护 / 恢复任务</el-button>
+        <div v-if="validated" style="margin-top:16px">
+          <p>备份版本 {{validated.manifest.app_version}} · 时间 {{validated.manifest.created_at}} · {{Object.keys(validated.manifest.files).length}} 个文件</p>
+          <el-button type="danger" @click="restoreBackup">确认恢复并进入维护模式</el-button>
         </div>
+        <p class="muted">完整备份包含数据库、商品图片和校验清单。恢复前会保存当前数据副本，重启时执行恢复；成功后所有设备须重新登录。配置密钥不包含在备份内。</p>
+        <el-divider />
+        <el-space wrap>
+          <el-button @click="exportFile('/export/purchases.xlsx','purchases.xlsx')">全部进货 Excel</el-button>
+          <el-button @click="exportFile('/export/sales.xlsx','sales.xlsx')">全部销售 Excel</el-button>
+          <el-button @click="exportFile('/export/stock.xlsx','stock.xlsx')">全部库存 Excel</el-button>
+        </el-space>
       </el-tab-pane>
     </el-tabs>
   </div>
@@ -51,12 +62,16 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { authApi, dictApi, downloadFile } from '../api'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { authApi, dictApi, downloadFile, backupApi } from '../api'
 import { useAuthStore } from '../stores/auth'
+import { useRouter } from 'vue-router'
+import { session, clearSession } from '../session'
 
 const auth = useAuthStore()
-const tab = ref('dict')
+const tab = ref(session.mustChange ? 'account' : 'dict')
+const router=useRouter()
+const backupInput=ref(null),backupStatus=ref({}),validated=ref(null)
 const groups = [
   { kind: 'category', label: '分类' },
   { kind: 'supplier', label: '厂家' },
@@ -91,19 +106,21 @@ async function changePwd() {
   await authApi.changePassword({ ...pwd })
   pwd.old_password = ''
   pwd.new_password = ''
-  ElMessage.success('密码已更新')
+  clearSession();ElMessage.success('密码已更新，请重新登录');router.replace('/login')
 }
 
 async function exportFile(path, filename) {
   await downloadFile(path, filename)
   ElMessage.success('已开始下载')
 }
-function importTip() {
-  ElMessage.info('导入功能将在 P1 版本提供（需先下载模板）')
-}
+async function loadBackupStatus(){backupStatus.value=await backupApi.status()}
+async function validateBackup(event){const file=event.target.files?.[0];event.target.value='';if(!file)return;validated.value=null;validated.value=await backupApi.validate(file);ElMessage.success('备份校验通过')}
+async function restoreBackup(){await ElMessageBox.confirm('恢复将替换当前数据库及图片，程序重启后执行。恢复前会保留副本。确定继续？','恢复备份',{type:'warning'});await backupApi.restore(validated.value.token);validated.value=null;await loadBackupStatus()}
+async function cancelRestore(){await backupApi.cancel();await loadBackupStatus()}
 
-onMounted(() => {
-  groups.forEach((g) => loadDict(g.kind))
+
+onMounted(async () => {
+  if(!session.mustChange){await loadBackupStatus();if(backupStatus.value.maintenance)tab.value='backup';else await Promise.all(groups.map(g=>loadDict(g.kind)))}
 })
 </script>
 

@@ -1,10 +1,11 @@
 import axios from 'axios'
+import { clearSession, session } from '../session'
 import { ElMessage } from 'element-plus'
 
 const http = axios.create({ baseURL: '/api', timeout: 20000 })
 
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = session.token
   if (token) config.headers.Authorization = 'Bearer ' + token
   return config
 })
@@ -22,12 +23,11 @@ http.interceptors.response.use(
   (err) => {
     const status = err.response?.status
     const msg = err.response?.data?.message || err.message || '网络错误'
-    if (status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('username')
+    if (status === 401 && !err.config?.url?.endsWith('/auth/login')) {
+      clearSession()
       ElMessage.error('登录已过期，请重新登录')
-      import('../router').then((m) => m.default.push('/login'))
-    } else {
+      window.dispatchEvent(new Event('auth-expired'))
+    } else if (!(status === 404 && err.config?.silentNotFound)) {
       ElMessage.error(msg)
     }
     return Promise.reject(err)
@@ -51,7 +51,7 @@ export const dictApi = {
 export const productApi = {
   list: (params) => http.get('/products', { params }),
   get: (id) => http.get(`/products/${id}`),
-  getByCode: (code) => http.get(`/products/by-code/${encodeURIComponent(code)}`),
+  getByCode: (code, options = {}) => http.get(`/products/by-code/${encodeURIComponent(code)}`, options),
   create: (data) => http.post('/products', data),
   update: (id, data) => http.put(`/products/${id}`, data),
   remove: (id) => http.delete(`/products/${id}`),
@@ -95,8 +95,8 @@ export const systemApi = {
   lanUrl: (params) => http.get('/system/lan-url', { params }),
 }
 
-export async function downloadFile(path, filename) {
-  const resp = await http.get(path, { responseType: 'blob' })
+export async function downloadFile(path, filename, params) {
+  const resp = await http.get(path, { responseType: 'blob', params })
   const blob = resp instanceof Blob ? resp : new Blob([resp])
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -108,4 +108,19 @@ export async function downloadFile(path, filename) {
   URL.revokeObjectURL(url)
 }
 
+export const documentApi = {
+  list: (params) => http.get('/documents', { params }),
+  get: (id) => http.get(`/documents/${id}`),
+  create: (data, key) => http.post('/documents', data, { headers: { 'Idempotency-Key': key } }),
+  void: (id, reason) => http.post(`/documents/${id}/void`, { reason }),
+  preview: () => http.get('/documents/cost-preview'),
+  recompute: (fingerprint) => http.post('/documents/cost-recompute', { fingerprint }),
+  audit: (params) => http.get('/documents/audit', { params }),
+}
+export const backupApi = {
+  status: () => http.get('/backups/status'),
+  validate: (file) => { const data = new FormData(); data.append('file', file); return http.post('/backups/validate', data) },
+  restore: (token) => http.post('/backups/restore', { token }),
+  cancel: () => http.post('/backups/cancel'),
+}
 export default http

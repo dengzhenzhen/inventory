@@ -5,6 +5,7 @@
       <el-button type="primary" @click="openDialog()">+ 新建款式</el-button>
     </div>
 
+    <div class="filter-bar"><el-input v-model="keyword" placeholder="款号 / 品名" clearable /><el-button @click="page=1;load()">查询</el-button></div>
     <el-table :data="rows" border stripe v-loading="loading">
       <el-table-column label="主图" width="80">
         <template #default="{ row }">
@@ -26,6 +27,7 @@
         </template>
       </el-table-column>
     </el-table>
+    <el-pagination v-model:current-page="page" :page-size="20" :total="total" layout="prev,pager,next,total" @current-change="load" />
   </div>
 
   <el-dialog v-model="dialog" :title="edit.id ? '编辑款式' : '新建款式'" width="560px">
@@ -68,6 +70,7 @@ import { fmtMoney, imgUrl } from '../utils'
 const dicts = reactive({ category: [], supplier: [] })
 const rows = ref([])
 const loading = ref(false)
+const page=ref(1),total=ref(0),keyword=ref('')
 const dialog = ref(false)
 const fileInput = ref(null)
 
@@ -82,7 +85,8 @@ async function loadDicts() {
 async function load() {
   loading.value = true
   try {
-    rows.value = (await productApi.list({ page: 1, page_size: 500 })).items
+    const result=await productApi.list({page:page.value,page_size:20,keyword:keyword.value})
+    rows.value=result.items;total.value=result.total
   } finally {
     loading.value = false
   }

@@ -13,6 +13,7 @@
         <el-menu-item index="/sale-create">销售开单</el-menu-item>
         <el-menu-item index="/sale-list">销售记录</el-menu-item>
       </el-sub-menu>
+      <el-menu-item index="/documents"><el-icon><Box /></el-icon><span>单据 / 退货 / 盘点</span></el-menu-item>
       <el-menu-item index="/stock"><el-icon><Box /></el-icon><span>库存查询</span></el-menu-item>
       <el-menu-item index="/products"><el-icon><Goods /></el-icon><span>商品档案</span></el-menu-item>
       <el-menu-item index="/reports"><el-icon><TrendCharts /></el-icon><span>统计报表</span></el-menu-item>
