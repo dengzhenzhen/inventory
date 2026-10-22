@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from . import __version__
 from . import models  # noqa: F401  # 注册模型
 from .config import CORS_ORIGINS, STATIC_DIR
 from .database import engine
@@ -40,7 +41,7 @@ async def lifespan(_app):
     engine.dispose()
 
 
-app = FastAPI(lifespan=lifespan, title="服装店进销存管理系统 API", version="2.0.0")
+app = FastAPI(lifespan=lifespan, title="服装店进销存管理系统 API", version=__version__)
 
 app.add_middleware(
     CORSMiddleware,

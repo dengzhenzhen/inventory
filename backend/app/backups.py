@@ -10,6 +10,7 @@ import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path, PurePosixPath
+from . import __version__
 from .config import DATA_DIR, DB_PATH, IMAGE_DIR
 
 MAX_ARCHIVE = 256 * 1024 * 1024
@@ -63,7 +64,7 @@ def create_backup():
             if p.is_file() and not p.is_symlink() and not p.name.startswith("."):
                 files["images/" + p.name] = p
         manifest = {
-            "app_version": "2.0.0",
+            "app_version": __version__,
             "schema": "v2_0001",
             "created_at": datetime.now().isoformat(),
             "files": {},
@@ -108,9 +109,9 @@ def validate_archive(path):
             ):
                 raise ValueError("备份含非法文件路径")
         manifest = json.loads(z.read("manifest.json"))
-        if (
-            manifest.get("schema") != "v2_0001"
-            or manifest.get("app_version") != "2.0.0"
+        if manifest.get("schema") != "v2_0001" or manifest.get("app_version") not in (
+            "2.0.0",
+            __version__,
         ):
             raise ValueError("不支持的备份版本")
         if set(manifest["files"]) != set(names) - {"manifest.json"}:

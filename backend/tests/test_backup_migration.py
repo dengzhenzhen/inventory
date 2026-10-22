@@ -1,3 +1,4 @@
+import json
 import io
 import sqlite3
 import zipfile
@@ -198,3 +199,24 @@ def test_automatic_preupgrade_backup(tmp_path, monkeypatch):
         assert "retail_cents" not in {
             r[1] for r in db.execute("PRAGMA table_info(product)")
         }
+
+
+@pytest.mark.parametrize("version, expected", [("2.0.0", 200), ("2.1.0", 422)])
+def test_backup_version_compatibility(auth, version, expected):
+    response = auth.get("/api/backups")
+    output = io.BytesIO()
+    with (
+        zipfile.ZipFile(io.BytesIO(response.content)) as original,
+        zipfile.ZipFile(output, "w") as patched,
+    ):
+        for name in original.namelist():
+            data = original.read(name)
+            if name == "manifest.json":
+                manifest = json.loads(data)
+                manifest["app_version"] = version
+                data = json.dumps(manifest).encode()
+            patched.writestr(name, data)
+    result = auth.post(
+        "/api/backups/validate", files={"file": ("backup.zip", output.getvalue())}
+    )
+    assert result.status_code == expected
